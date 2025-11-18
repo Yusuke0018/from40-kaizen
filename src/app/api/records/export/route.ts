@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase/admin";
+import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { todayKey } from "@/lib/date";
 
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
     const columns =
       searchParams.get("columns")?.split(",").filter(Boolean) ?? defaultColumns;
 
-    const snapshot = await adminDb
+    const snapshot = await getAdminDb()
       .collection("users")
       .doc(user.uid)
       .collection("records")

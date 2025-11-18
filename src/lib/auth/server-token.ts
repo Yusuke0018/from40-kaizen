@@ -1,4 +1,4 @@
-import { adminAuth } from "@/lib/firebase/admin";
+import { getAdminAuth } from "@/lib/firebase/admin";
 
 export async function verifyRequestUser(req: Request) {
   const authHeader = req.headers.get("authorization");
@@ -8,5 +8,6 @@ export async function verifyRequestUser(req: Request) {
   }
 
   const token = authHeader.split(" ")[1];
+  const adminAuth = getAdminAuth();
   return adminAuth.verifyIdToken(token);
 }

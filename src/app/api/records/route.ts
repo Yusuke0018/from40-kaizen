@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase/admin";
+import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { z } from "zod";
 import { dailyRecordSchema } from "@/lib/schemas/daily-record";
 import { calcSleepHours, todayKey } from "@/lib/date";
 
 const collectionFor = (uid: string) =>
-  adminDb.collection("users").doc(uid).collection("records");
+  getAdminDb().collection("users").doc(uid).collection("records");
 
 export async function GET(request: Request) {
   try {
