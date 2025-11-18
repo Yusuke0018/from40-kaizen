@@ -1,65 +1,37 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useState } from "react";
 import {
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase/client";
 
-const actionUrl =
-  process.env.NEXT_PUBLIC_APP_URL?.concat("/signin") ?? "http://localhost:3000/signin";
-
 export function SignInCard() {
-  const [email, setEmail] = useState(() =>
-    typeof window === "undefined"
-      ? ""
-      : window.localStorage.getItem("chronicle-email") ?? ""
-  );
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
-    "idle"
-  );
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [status, setStatus] = useState<"idle" | "loading">("idle");
+  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const savedEmail =
-      window.localStorage.getItem("chronicle-email") ?? email;
-    if (isSignInWithEmailLink(firebaseAuth, window.location.href)) {
-      const emailForLink =
-        savedEmail ||
-        window.prompt("送信したメールアドレスを入力してください") ||
-        "";
-      if (!emailForLink) return;
-      signInWithEmailLink(firebaseAuth, emailForLink, window.location.href)
-        .then(() => {
-          window.localStorage.removeItem("chronicle-email");
-        })
-        .catch((err) => {
-          console.error(err);
-          setError("リンクの確認に失敗しました。もう一度お試しください。");
-        });
-    }
-  }, [email]);
-
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStatus("sending");
+    setStatus("loading");
     setError(null);
+    setMessage(null);
     try {
-      await sendSignInLinkToEmail(firebaseAuth, email, {
-        url: actionUrl,
-        handleCodeInApp: true,
-      });
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("chronicle-email", email);
+      if (mode === "signin") {
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
+      } else {
+        await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        setMessage("アカウントを作成しました。ログイン済みです。");
       }
-      setStatus("sent");
     } catch (err) {
       console.error(err);
-      setError("リンク送信に失敗しました。設定を確認してください。");
-      setStatus("error");
+      setError("メールアドレスまたはパスワードを確認してください。");
+    } finally {
+      setStatus("idle");
     }
   }
 
@@ -69,9 +41,11 @@ export function SignInCard() {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
           40 CHRONICLE
         </p>
-        <h1 className="pt-2 text-2xl font-semibold">メールリンクでログイン</h1>
+        <h1 className="pt-2 text-2xl font-semibold">
+          {mode === "signin" ? "メールとパスワードでログイン" : "アカウントを作成"}
+        </h1>
         <p className="text-sm text-slate-500">
-          登録済みのメールアドレス宛にワンタップログイン用リンクを送ります。
+          自分専用のメールアドレスとパスワードでサインインします。
         </p>
         <form onSubmit={handleSubmit} className="mt-6 space-y-4 text-left">
           <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -84,18 +58,52 @@ export function SignInCard() {
               className="rounded-2xl border border-mint-100 bg-white px-4 py-3 text-base text-slate-700 shadow-sm"
             />
           </label>
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+            パスワード
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              className="rounded-2xl border border-mint-100 bg-white px-4 py-3 text-base text-slate-700 shadow-sm"
+            />
+            <span className="text-[0.7rem] text-slate-400">
+              {mode === "signup"
+                ? "8文字以上を推奨。1度作成すれば次回から同じ情報でログインできます。"
+                : "作成済みのパスワードを入力してください。"}
+            </span>
+          </label>
           <button
             type="submit"
-            disabled={status === "sending"}
+            disabled={status === "loading"}
             className="w-full rounded-full bg-gradient-to-r from-mint-400 via-mint-500 to-sky-400 py-3 text-sm font-semibold text-white shadow-lg shadow-mint-300/70 disabled:opacity-70"
           >
-            {status === "sending" ? "送信中…" : "ログインリンクを送る"}
+            {status === "loading"
+              ? "処理中..."
+              : mode === "signin"
+              ? "ログイン"
+              : "アカウント作成"}
           </button>
         </form>
-        {status === "sent" && (
-          <p className="pt-4 text-sm font-semibold text-mint-600">
-            メールを確認し、リンクをタップしてください。
-          </p>
+        <div className="pt-4 text-sm text-slate-500">
+          {mode === "signin" ? (
+            <button
+              className="font-semibold text-mint-600"
+              onClick={() => setMode("signup")}
+            >
+              初めて利用する場合はこちら
+            </button>
+          ) : (
+            <button
+              className="font-semibold text-sky-600"
+              onClick={() => setMode("signin")}
+            >
+              既に作成したアカウントでログイン
+            </button>
+          )}
+        </div>
+        {message && (
+          <p className="pt-4 text-sm font-semibold text-mint-600">{message}</p>
         )}
         {error && <p className="pt-4 text-sm text-red-500">{error}</p>}
       </div>

@@ -1,10 +1,10 @@
 ## Progress Log
 
 **Latest update:** 2024-06-12  
-**Focus:** Firebase連携・メールリンク認証・日次データ保存/CSV出力までのMVP完了
+**Focus:** Firebase連携・メール/パスワード認証・日次データ保存/CSV出力までのMVP完了
 
 ### Done
-- Firebase SDK (client/admin)＋メールリンク認証（SignInカード、AuthGate）を実装。メールアドレスのみでログイン可能。
+- Firebase SDK (client/admin)＋メール/パスワード認証（SignInカード、AuthGate）を実装。メールアドレスのみでログイン可能。
 - Firestoreコレクション `users/{uid}/records/{date}` を想定した API (`/api/records`, `/api/records/export`) を実装し、TodayフォームとHistory/Export画面を実データ連携。
 - 写真はFirebase Storageへ直接アップロード→ダウンロードURLを記録に保持。
 - CSVエクスポートは列選択＋期間指定に対応し、Snake caseヘッダーでAI分析に渡しやすい形式に整形。

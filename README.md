@@ -20,12 +20,11 @@ npm run lint
 `src/app/(mobile)` に Today / History / Export / Settings のスマホ向け画面を集約し、`docs/PROGRESS.md` で進捗と次タスクをメモしています。別端末で再開するときはこのファイルか Issue に最新状況を残してください。
 
 ### Firebase Setup
-1. Firebase Consoleで新規プロジェクトを作成し、**Authentication → Sign-in method** で「Email link（パスワードなし）」を有効化。認証ドメインに `localhost` と Vercelドメインを追加。
+1. Firebase Consoleで新規プロジェクトを作成し、**Authentication → Sign-in method** で「Email / Password」を有効化。認証ドメインに `localhost` と Vercelドメインを追加。
 2. **Build → Firestore Database** と **Storage** を作成（リージョンは `asia-northeast1` など扱いやすい場所を推奨）。
 3. ウェブアプリを登録して表示される SDK 設定を `.env.local` の `NEXT_PUBLIC_FIREBASE_*` にコピペ。
 4. **Service Accounts → Firebase Admin SDK** で新しい秘密鍵を発行し、`FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY` に設定。`PRIVATE_KEY` は `\n` を含めたまま引用符付きで保存。
-5. Firebase Auth の Action URL として `NEXT_PUBLIC_APP_URL` を `http://localhost:3000`（開発時）や本番ドメインに合わせる。
-6. Security Rules は以下をベースにする（必要に応じて拡張）:
+5. Security Rules は以下をベースにする（必要に応じて拡張）:
    ```plaintext
    match /databases/{database}/documents {
      match /users/{userId}/records/{recordId} {
@@ -41,8 +40,8 @@ npm run lint
    ```
 
 ### Authentication Flow
-- `/signin` またはアプリ起動時に表示されるフォームに自分のメールを入力 → Firebase Auth がログインリンクを送信。
-- メール内のリンクを開くと自動的にサインイン（ローカルストレージにアドレスを保持）。1ユーザー想定なのでユーザー管理は不要。
+- `/signin` でメールアドレスとパスワードを入力し、その場でログイン or 「アカウントを作成」を実行。
+- Firebase Auth がEmail/Password資格情報をブラウザにローカル永続化するため、次回以降もログイン状態を維持。
 - Settings画面からサインアウト可能。
 
 ### CSV Export

@@ -2,7 +2,12 @@
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signOut,
+} from "firebase/auth";
 import { firebaseAuth } from "@/lib/firebase/client";
 
 type AuthContextValue = {
@@ -18,11 +23,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(firebaseAuth, (next) => {
-      setUser(next);
-      setInitializing(false);
-    });
-    return () => unsub();
+    let unsubscribe = () => {};
+    setPersistence(firebaseAuth, browserLocalPersistence)
+      .then(() => {
+        unsubscribe = onAuthStateChanged(firebaseAuth, (next) => {
+          setUser(next);
+          setInitializing(false);
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to set auth persistence", error);
+        setInitializing(false);
+      });
+    return () => unsubscribe();
   }, []);
 
   const value = useMemo(
