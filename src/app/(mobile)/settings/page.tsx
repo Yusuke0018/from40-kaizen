@@ -1,3 +1,8 @@
+"use client";
+
+import { useState } from "react";
+import { useAuthContext } from "@/components/providers/auth-provider";
+
 const reminders = [
   {
     title: "朝のルーティン",
@@ -27,6 +32,18 @@ const experiments = [
 ];
 
 export default function SettingsPage() {
+  const { user, signOut } = useAuthContext();
+  const [signingOut, setSigningOut] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <div className="space-y-6 pb-16">
       <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-200/70">
@@ -37,6 +54,17 @@ export default function SettingsPage() {
         <p className="text-sm text-slate-500">
           Firebaseで認証＆同期され、複数端末から同じ体験でアクセスできます。
         </p>
+        <div className="mt-4 rounded-2xl border border-slate-100/70 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+          <p className="font-semibold text-slate-700">ログイン中</p>
+          <p>{user?.email}</p>
+        </div>
+        <button
+          onClick={() => void handleSignOut()}
+          className="mt-4 w-full rounded-full border border-slate-200 py-3 text-sm font-semibold text-slate-500"
+          disabled={signingOut}
+        >
+          {signingOut ? "サインアウト中…" : "サインアウト"}
+        </button>
       </section>
 
       <section className="rounded-3xl border border-mint-100/70 bg-mint-50/80 p-5 shadow-inner shadow-mint-100/70">

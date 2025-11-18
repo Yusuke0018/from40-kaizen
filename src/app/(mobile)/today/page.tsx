@@ -1,4 +1,6 @@
-import type { ComponentType, ReactNode } from "react";
+"use client";
+
+import Image from "next/image";
 import {
   Activity,
   Camera,
@@ -7,58 +9,241 @@ import {
   HeartPulse,
   Moon,
 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useAuthContext } from "@/components/providers/auth-provider";
+import type { DailyRecord } from "@/types/daily-record";
+import { calcSleepHours, todayKey } from "@/lib/date";
+import { storage } from "@/lib/firebase/client";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 
-const quickStats = [
-  {
-    label: "今週の平均睡眠",
-    value: "7時間42分",
-    helper: "+18分 vs 先週",
-  },
-  { label: "気分スコア", value: "4.2 / 5", helper: "安定しています" },
-  { label: "歩数", value: "8,950歩", helper: "目標まであと1,050" },
-];
-
-const missions = [
-  { id: 1, title: "22:30就寝チャレンジ", note: "5/7達成", checked: true },
-  { id: 2, title: "13時以降カフェインなし", note: "あと2日", checked: false },
-  { id: 3, title: "朝の散歩10分", note: "天気◎", checked: true },
-];
-
-const experiments = [
-  "砂糖リセット3週目",
-  "夜スクリーンオフ30分前",
-  "朝の白湯",
-];
+const createEmptyRecord = (date: string): DailyRecord => ({
+  date,
+  weightKg: null,
+  sleepStart: null,
+  sleepEnd: null,
+  sleepHours: null,
+  avgSleepHr: null,
+  wakeCondition: "",
+  moodMorning: 3,
+  moodEvening: 3,
+  sleepiness: 3,
+  hydrationMl: null,
+  calories: null,
+  steps: null,
+  mealsNote: "",
+  highlight: "",
+  challenge: "",
+  journal: "",
+  photoUrls: [],
+});
 
 export default function TodayPage() {
+  const { user } = useAuthContext();
+  const [selectedDate, setSelectedDate] = useState(todayKey());
+  const [record, setRecord] = useState<DailyRecord>(createEmptyRecord(todayKey()));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchRecord = useCallback(
+    async (date: string) => {
+      if (!user) return null;
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/records?date=${date}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to load record");
+      const data = (await res.json()) as DailyRecord;
+      return {
+        ...createEmptyRecord(date),
+        ...data,
+        date,
+        photoUrls: data.photoUrls ?? [],
+      };
+    },
+    [user]
+  );
+
+  const refreshRecord = useCallback(
+    async (date: string) => {
+      if (!user) return;
+      setLoading(true);
+      setStatusMessage(null);
+      setErrorMessage(null);
+      try {
+        const data = await fetchRecord(date);
+        setRecord(data ?? createEmptyRecord(date));
+      } catch (err) {
+        console.error(err);
+        setErrorMessage("既存データの取得に失敗しました。");
+        setRecord(createEmptyRecord(date));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [user, fetchRecord]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    void refreshRecord(selectedDate);
+  }, [user, selectedDate, refreshRecord]);
+
+  const computedSleepHours = useMemo(
+    () => calcSleepHours(record.date, record.sleepStart, record.sleepEnd),
+    [record.date, record.sleepStart, record.sleepEnd]
+  );
+
+  const quickStats = [
+    {
+      label: "睡眠時間",
+      value: computedSleepHours ? `${computedSleepHours}h` : "未入力",
+      helper:
+        record.sleepStart && record.sleepEnd
+          ? `${record.sleepStart} – ${record.sleepEnd}`
+          : "就寝/起床を入力",
+    },
+    {
+      label: "気分スコア",
+      value: `${record.moodMorning ?? 3} / 5`,
+      helper: "朝の気分",
+    },
+    {
+      label: "歩数",
+      value: record.steps ? `${record.steps.toLocaleString()}歩` : "未入力",
+      helper: "記録を追加しましょう",
+    },
+  ];
+
+  async function handleSave() {
+    if (!user) return;
+    setSaving(true);
+    setStatusMessage(null);
+    setErrorMessage(null);
+    try {
+      const token = await user.getIdToken();
+      const payload = {
+        ...record,
+        sleepHours: computedSleepHours ?? record.sleepHours,
+        date: selectedDate,
+      };
+      const res = await fetch("/api/records", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setStatusMessage("保存しました");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("保存に失敗しました。もう一度お試しください。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePhotoUpload(file: File) {
+    if (!user) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const storageRef = ref(
+        storage,
+        `users/${user.uid}/photos/${selectedDate}/${Date.now()}-${file.name}`
+      );
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setRecord((prev) => ({
+        ...prev,
+        photoUrls: [...prev.photoUrls, url],
+      }));
+    } catch (error) {
+      console.error(error);
+      setUploadError("写真のアップロードに失敗しました。");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  const missions = [
+    { id: 1, title: "22:30就寝チャレンジ", note: "5/7達成", checked: true },
+    { id: 2, title: "13時以降カフェインなし", note: "あと2日", checked: false },
+    { id: 3, title: "朝の散歩10分", note: "天気◎", checked: true },
+  ];
+
   return (
     <div className="space-y-6 pb-16" id="record">
       <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-200/50 backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-          EXPERIMENT FOCUS
-        </p>
-        <h2 className="pt-2 text-2xl font-semibold text-slate-900">
-          生活リズム×栄養カイゼン
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+              EXPERIMENT FOCUS
+            </p>
+            <h2 className="pt-2 text-2xl font-semibold text-slate-900">
+              生活リズム×栄養カイゼン
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedDate}
+              max={todayKey()}
+              onChange={(event) => setSelectedDate(event.target.value)}
+              className="rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600 shadow-inner"
+            />
+            <button
+              type="button"
+              onClick={() => setSelectedDate(todayKey())}
+              className="text-xs font-semibold text-mint-600"
+            >
+              今日
+            </button>
+          </div>
+        </div>
         <p className="mt-2 text-sm text-slate-600">
           睡眠と血糖コントロールを中心に、刺激物を控えて体調の変化を観察します。
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {experiments.map((item) => (
-            <span
-              key={item}
-              className="rounded-full border border-mint-200/80 bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700"
-            >
-              {item}
-            </span>
-          ))}
+          {["砂糖リセット3週目", "夜スクリーンオフ30分前", "朝の白湯"].map(
+            (item) => (
+              <span
+                key={item}
+                className="rounded-full border border-mint-200/80 bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700"
+              >
+                {item}
+              </span>
+            )
+          )}
         </div>
+        {statusMessage && (
+          <p className="pt-3 text-sm font-semibold text-mint-600">
+            {statusMessage}
+          </p>
+        )}
+        {errorMessage && (
+          <p className="pt-3 text-sm font-semibold text-red-500">{errorMessage}</p>
+        )}
       </section>
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">今日のスナップショット</h3>
-          <button className="text-sm font-semibold text-mint-600">更新</button>
+          <button
+            className="text-sm font-semibold text-mint-600"
+            onClick={() => void refreshRecord(selectedDate)}
+            disabled={loading}
+          >
+            {loading ? "更新中…" : "再読込"}
+          </button>
         </div>
         <div className="grid gap-3">
           {quickStats.map((stat) => (
@@ -79,36 +264,119 @@ export default function TodayPage() {
       </section>
 
       <section className="rounded-3xl border border-mint-100/80 bg-gradient-to-br from-mint-50 to-white p-5 shadow-inner shadow-mint-100/60">
-        <h3 className="text-lg font-semibold text-slate-900">
-          朝のチェックイン
-        </h3>
-        <p className="text-sm text-slate-500">
-          目覚めてすぐに入力する基本データです。
-        </p>
-        <form className="mt-4 space-y-4">
+        <h3 className="text-lg font-semibold text-slate-900">朝のチェックイン</h3>
+        <p className="text-sm text-slate-500">目覚めてすぐに入力する基本データです。</p>
+        <form
+          className="mt-4 space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSave();
+          }}
+        >
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="体重 (kg)" type="number" placeholder="65.2" />
-            <Field label="睡眠時間" type="text" placeholder="7時間45分" />
+            <Field
+              label="体重 (kg)"
+              type="number"
+              value={record.weightKg ?? ""}
+              placeholder="65.2"
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  weightKg: value === "" ? null : Number(value),
+                }))
+              }
+            />
+            <Field
+              label="歩数"
+              type="number"
+              value={record.steps ?? ""}
+              placeholder="8,000"
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  steps: value === "" ? null : Number(value),
+                }))
+              }
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="就寝時刻" type="time" />
-            <Field label="起床時刻" type="time" />
+            <Field
+              label="就寝時刻"
+              type="time"
+              value={record.sleepStart ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  sleepStart: value,
+                }))
+              }
+            />
+            <Field
+              label="起床時刻"
+              type="time"
+              value={record.sleepEnd ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  sleepEnd: value,
+                }))
+              }
+            />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field
               label="睡眠時平均心拍"
               type="number"
-              placeholder="54 bpm"
+              placeholder="54"
+              value={record.avgSleepHr ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  avgSleepHr: value === "" ? null : Number(value),
+                }))
+              }
             />
-            <Field label="起床時の体調" type="text" placeholder="ややだるい" />
+            <Field
+              label="起床時の体調"
+              type="text"
+              placeholder="ややだるい"
+              value={record.wakeCondition ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  wakeCondition: value,
+                }))
+              }
+            />
           </div>
-          <MoodRange title="気分" helper="今日はどれくらい晴れていますか？" />
-          <MoodRange title="眠気" helper="午前中の眠気レベル" />
+          <MoodRange
+            title="気分"
+            helper="今日はどれくらい晴れていますか？"
+            value={record.moodMorning ?? 3}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                moodMorning: value,
+              }))
+            }
+          />
+          <MoodRange
+            title="眠気"
+            helper="午前中の眠気レベル"
+            value={record.sleepiness ?? 3}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                sleepiness: value,
+              }))
+            }
+          />
           <button
-            className="w-full rounded-full bg-mint-500 py-3 text-sm font-semibold text-white shadow-lg shadow-mint-300/60"
-            type="button"
+            className="w-full rounded-full bg-mint-500 py-3 text-sm font-semibold text-white shadow-lg shadow-mint-300/60 disabled:opacity-60"
+            type="submit"
+            disabled={saving}
           >
-            朝の記録を保存
+            {saving ? "保存中…" : "朝の記録を保存"}
           </button>
         </form>
       </section>
@@ -118,31 +386,94 @@ export default function TodayPage() {
           <Droplets className="h-5 w-5 text-sky-500" />
           <h3 className="text-lg font-semibold">水分＆食事メモ</h3>
         </div>
-        <p className="text-sm text-slate-500">
-          食事内容や気付きを写真つきで残します。
-        </p>
+        <p className="text-sm text-slate-500">食事内容や気付きを写真つきで残します。</p>
         <div className="mt-4 grid gap-3">
           <Field
             label="食事メモ"
             as="textarea"
             placeholder="例: 朝はオートミールとギリシャヨーグルト、間食なし"
+            value={record.mealsNote}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                mealsNote: value,
+              }))
+            }
           />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="水分量 (ml)" type="number" placeholder="1,600" />
-            <Field label="消費カロリー" type="number" placeholder="1,850" />
+            <Field
+              label="水分量 (ml)"
+              type="number"
+              placeholder="1,600"
+              value={record.hydrationMl ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  hydrationMl: value === "" ? null : Number(value),
+                }))
+              }
+            />
+            <Field
+              label="消費カロリー"
+              type="number"
+              placeholder="1,850"
+              value={record.calories ?? ""}
+              onChange={(value) =>
+                setRecord((prev) => ({
+                  ...prev,
+                  calories: value === "" ? null : Number(value),
+                }))
+              }
+            />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Chip icon={Coffee}>カフェイン0杯</Chip>
-            <Chip icon={Activity}>軽い運動 25分</Chip>
-            <Chip icon={HeartPulse}>ストレス 2/5</Chip>
+            <Chip icon={Coffee}>
+              カフェイン {record.mealsNote.includes("カフェイン") ? "有り" : "0杯"}
+            </Chip>
+            <Chip icon={Activity}>
+              歩数 {record.steps ? record.steps.toLocaleString() : "未入力"}
+            </Chip>
+            <Chip icon={HeartPulse}>
+              ストレス {record.moodEvening ?? 3}/5
+            </Chip>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void handlePhotoUpload(file);
+            }}
+          />
           <button
             className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-mint-300 bg-mint-50/80 py-4 text-sm font-semibold text-mint-600"
             type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
           >
             <Camera className="h-4 w-4" />
-            食事写真を追加
+            {uploading ? "アップロード中…" : "食事写真を追加"}
           </button>
+          {uploadError && (
+            <p className="text-sm font-semibold text-red-500">{uploadError}</p>
+          )}
+          {record.photoUrls.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {record.photoUrls.map((url) => (
+                <Image
+                  key={url}
+                  src={url}
+                  alt="meal"
+                  width={96}
+                  height={96}
+                  className="h-24 w-24 rounded-2xl object-cover shadow"
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -151,29 +482,52 @@ export default function TodayPage() {
           <Moon className="h-5 w-5 text-mint-500" />
           <div>
             <h3 className="text-lg font-semibold">夜の振り返り</h3>
-            <p className="text-sm text-slate-500">
-              1日の体調と学びをまとめます。
-            </p>
+            <p className="text-sm text-slate-500">1日の体調と学びをまとめます。</p>
           </div>
         </div>
         <div className="mt-4 space-y-3">
-          <MoodRange title="1日の体調" helper="夕方〜夜の状態" />
-          <MoodRange title="気分" helper="総合的な満足度" />
+          <MoodRange
+            title="1日の体調"
+            helper="夕方〜夜の状態"
+            value={record.moodEvening ?? 3}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                moodEvening: value,
+              }))
+            }
+          />
           <Field
             label="ハイライト"
             as="textarea"
             placeholder="例: ミッション達成、集中力高め"
+            value={record.highlight}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                highlight: value,
+              }))
+            }
           />
           <Field
             label="課題・気付き"
             as="textarea"
             placeholder="例: 夕方に甘いもの欲求、寝る前スマホ触ってしまった"
+            value={record.challenge}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                challenge: value,
+              }))
+            }
           />
           <button
-            className="w-full rounded-full bg-sky-400 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-200/60"
+            className="w-full rounded-full bg-sky-400 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-200/60 disabled:opacity-70"
             type="button"
+            disabled={saving}
+            onClick={() => void handleSave()}
           >
-            1日の記録を保存
+            {saving ? "保存中…" : "1日の記録を保存"}
           </button>
         </div>
       </section>
@@ -182,11 +536,9 @@ export default function TodayPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">週間ミッション</h3>
-            <p className="text-sm text-slate-500">
-              ルーティン強化のための小さな約束。
-            </p>
+            <p className="text-sm text-slate-500">ルーティン強化のための小さな約束。</p>
           </div>
-          <button className="text-xs font-semibold text-sky-600">
+          <button className="text-xs font-semibold text-sky-600" type="button">
             編集する
           </button>
         </div>
@@ -215,37 +567,42 @@ export default function TodayPage() {
   );
 }
 
-type FieldProps =
-  | {
-      label: string;
-      placeholder?: string;
-      type?: string;
-      as?: "input";
-    }
-  | {
-      label: string;
-      placeholder?: string;
-      as: "textarea";
-    };
+type FieldProps = {
+  label: string;
+  placeholder?: string;
+  type?: string;
+  value: string | number | null;
+  onChange: (value: string) => void;
+  as?: "textarea";
+};
 
-function Field(props: FieldProps) {
-  const { label, placeholder } = props;
-  if (props.as === "textarea") {
+function Field({ label, placeholder, type, value, onChange, as }: FieldProps) {
+  if (as === "textarea") {
     return (
       <label className="space-y-2 text-left">
         <span className="text-[0.7rem] uppercase tracking-[0.2em] text-slate-500">
           {label}
         </span>
-        <textarea placeholder={placeholder} />
+        <textarea
+          placeholder={placeholder}
+          value={value ?? ""}
+          onChange={(event) => onChange(event.target.value)}
+        />
       </label>
     );
   }
+
   return (
     <label className="space-y-2 text-left">
       <span className="text-[0.7rem] uppercase tracking-[0.2em] text-slate-500">
         {label}
       </span>
-      <input type={props.type ?? "text"} placeholder={placeholder} />
+      <input
+        type={type ?? "text"}
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </label>
   );
 }
@@ -253,9 +610,13 @@ function Field(props: FieldProps) {
 function MoodRange({
   title,
   helper,
+  value,
+  onChange,
 }: {
   title: string;
   helper: string;
+  value: number;
+  onChange: (value: number) => void;
 }) {
   return (
     <div className="rounded-2xl border border-mint-100/70 bg-white/70 p-4">
@@ -266,13 +627,14 @@ function MoodRange({
           </p>
           <p className="text-[0.75rem] text-slate-500">{helper}</p>
         </div>
-        <span className="text-sm font-semibold text-mint-600">3 / 5</span>
+        <span className="text-sm font-semibold text-mint-600">{value} / 5</span>
       </div>
       <input
         type="range"
         min="1"
         max="5"
-        defaultValue="3"
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
         className="mt-3 w-full accent-mint-500"
       />
       <div className="mt-1 flex justify-between text-[0.65rem] text-slate-400">
@@ -287,8 +649,8 @@ function Chip({
   children,
   icon: Icon,
 }: {
-  children: ReactNode;
-  icon: ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+  icon: React.ComponentType<{ className?: string }>;
 }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-mint-100/80 px-3 py-1 text-xs font-medium text-mint-700">
