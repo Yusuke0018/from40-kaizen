@@ -11,12 +11,15 @@ const columnOptions = [
   "sleepStart",
   "sleepEnd",
   "sleepHours",
+  "avgSleepHr",
+  "hrv",
   "moodMorning",
   "moodEvening",
   "steps",
   "hydrationMl",
   "calories",
   "mealsNote",
+  "emotionNote",
   "highlight",
   "challenge",
   "photoUrls",
@@ -33,6 +36,7 @@ export default function ExportPage() {
     "sleepEnd",
     "sleepHours",
     "moodMorning",
+    "hrv",
   ]);
   const [preview, setPreview] = useState<DailyRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -205,7 +209,9 @@ export default function ExportPage() {
                     睡眠: {row.sleepStart ?? "--"} - {row.sleepEnd ?? "--"}
                   </span>
                 </div>
-                <p className="mt-2 text-slate-500">{row.highlight || row.mealsNote}</p>
+                <p className="mt-2 text-slate-500">
+                  {row.emotionNote || row.highlight || row.mealsNote}
+                </p>
               </div>
             ))}
             {preview.length === 0 && (

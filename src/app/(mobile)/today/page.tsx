@@ -23,6 +23,7 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   sleepEnd: null,
   sleepHours: null,
   avgSleepHr: null,
+  hrv: null,
   wakeCondition: "",
   moodMorning: 3,
   moodEvening: 3,
@@ -31,6 +32,7 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   calories: null,
   steps: null,
   mealsNote: "",
+  emotionNote: "",
   highlight: "",
   challenge: "",
   journal: "",
@@ -112,6 +114,11 @@ export default function TodayPage() {
       label: "気分スコア",
       value: `${record.moodMorning ?? 3} / 5`,
       helper: "朝の気分",
+    },
+    {
+      label: "HRV",
+      value: record.hrv != null ? `${record.hrv}ms` : "未入力",
+      helper: "朝一番のHRV",
     },
     {
       label: "歩数",
@@ -349,6 +356,18 @@ export default function TodayPage() {
               }
             />
           </div>
+          <Field
+            label="起床時HRV (ms)"
+            type="number"
+            placeholder="65"
+            value={record.hrv ?? ""}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                hrv: value === "" ? null : Number(value),
+              }))
+            }
+          />
           <MoodRange
             title="気分"
             helper="今日はどれくらい晴れていますか？"
@@ -434,7 +453,7 @@ export default function TodayPage() {
               歩数 {record.steps ? record.steps.toLocaleString() : "未入力"}
             </Chip>
             <Chip icon={HeartPulse}>
-              ストレス {record.moodEvening ?? 3}/5
+              HRV {record.hrv != null ? `${record.hrv}ms` : "未入力"}
             </Chip>
           </div>
           <input
@@ -494,6 +513,18 @@ export default function TodayPage() {
               setRecord((prev) => ({
                 ...prev,
                 moodEvening: value,
+              }))
+            }
+          />
+          <Field
+            label="今日の感情メモ"
+            as="textarea"
+            placeholder="例: 午前は穏やか、夕方はやや不安"
+            value={record.emotionNote}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                emotionNote: value,
               }))
             }
           />

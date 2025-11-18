@@ -102,7 +102,11 @@ export default function HistoryPage() {
             歩数は平均{" "}
             <strong className="text-mint-700">
               {summary.avgSteps.toLocaleString()}歩
-            </strong>{" "}
+            </strong>
+            、平均HRVは{" "}
+            <strong className="text-mint-700">
+              {summary.avgHrv ? `${summary.avgHrv}ms` : "--"}
+            </strong>
             です。
           </p>
           <div className="mt-4 grid gap-3 text-sm">
@@ -156,9 +160,12 @@ export default function HistoryPage() {
                 <span className="rounded-full bg-slate-100 px-3 py-1">
                   水分 {record.hydrationMl ?? "-"}ml
                 </span>
+                <span className="rounded-full bg-slate-100 px-3 py-1">
+                  HRV {record.hrv != null ? `${record.hrv}ms` : "-"}
+                </span>
               </div>
               <p className="mt-3 text-sm text-slate-600">
-                {record.highlight || record.journal || "メモなし"}
+                {record.emotionNote || record.highlight || record.journal || "メモなし"}
               </p>
             </article>
           ))}
@@ -207,6 +214,7 @@ function summarize(records: DailyRecord[]) {
       avgSleepHours: 0,
       avgMood: 0,
       avgSteps: 0,
+      avgHrv: 0,
       days: 0,
       sleepAlerts: 0,
       rangeLabel: `~ ${todayKey()}`,
@@ -215,6 +223,10 @@ function summarize(records: DailyRecord[]) {
   const sleep = avg(records.map((r) => r.sleepHours ?? 0));
   const mood = avg(records.map((r) => r.moodEvening ?? r.moodMorning ?? 0));
   const steps = avg(records.map((r) => r.steps ?? 0));
+   const hrvValues = records
+     .map((r) => r.hrv)
+     .filter((value): value is number => value != null);
+   const hrv = hrvValues.length ? avg(hrvValues) : 0;
   const alerts = records.filter((r) => (r.sleepHours ?? 24) < 5).length;
   const first = records[records.length - 1];
   const last = records[0];
@@ -223,6 +235,7 @@ function summarize(records: DailyRecord[]) {
     avgSleepHours: sleep.toFixed(2),
     avgMood: mood.toFixed(2),
     avgSteps: Math.round(steps),
+    avgHrv: Math.round(hrv),
     days: records.length,
     sleepAlerts: alerts,
     rangeLabel: `${first.date} ~ ${last.date}`,
@@ -243,6 +256,10 @@ function buildCorrelations(records: DailyRecord[]) {
     records.map((r) => r.hydrationMl ?? 0),
     records.map((r) => r.sleepiness ?? 0)
   );
+  const hrvMood = correlation(
+    records.map((r) => r.hrv ?? 0),
+    records.map((r) => r.moodEvening ?? r.moodMorning ?? 0)
+  );
   return [
     {
       label: "睡眠 × 気分",
@@ -255,6 +272,12 @@ function buildCorrelations(records: DailyRecord[]) {
       value: caffeineMood.value,
       trend: caffeineMood.trend,
       desc: "水分補給が眠気をどう変えるかをチェック",
+    },
+    {
+      label: "HRV × 気分",
+      value: hrvMood.value,
+      trend: hrvMood.trend,
+      desc: "自律神経バランスと主観的な気分の関係",
     },
   ];
 }

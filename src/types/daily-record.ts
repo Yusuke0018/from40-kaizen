@@ -5,6 +5,7 @@ export type DailyRecord = {
   sleepEnd: string | null;
   sleepHours: number | null;
   avgSleepHr?: number | null;
+  hrv: number | null;
   wakeCondition: string | null;
   moodMorning: number | null;
   moodEvening: number | null;
@@ -13,6 +14,7 @@ export type DailyRecord = {
   calories: number | null;
   steps: number | null;
   mealsNote: string;
+  emotionNote: string;
   highlight: string;
   challenge: string;
   journal: string;
