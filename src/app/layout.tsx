@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://from40-kaizen.vercel.app"),
+  metadataBase: new URL("https://40-chronicle.vercel.app"),
   title: {
-    default: "from40 Kaizen Lab",
-    template: "%s | from40 Kaizen Lab",
+    default: "40 Chronicle",
+    template: "%s | 40 Chronicle",
   },
   description:
-    "Mobile-first life log for experiments, nutrition, and vitality tracking with Firebase + Next.js.",
+    "Mobile-first life chronicle for experiments, nutrition, and vitality tracking with Firebase + Next.js.",
 };
 
 export default function RootLayout({

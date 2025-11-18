@@ -59,7 +59,7 @@ export function MobileShell({ children }: MobileShellProps) {
       />
       <header className="z-10 px-6 pb-2 pt-8">
         <p className="text-[0.65rem] uppercase tracking-[0.32em] text-slate-500">
-          from40 KAIZEN LAB
+          40 CHRONICLE
         </p>
         <div className="flex items-center justify-between pt-2">
           <div>

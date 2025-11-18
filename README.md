@@ -1,4 +1,4 @@
-## from40 Kaizen Lab
+## 40 Chronicle
 
 モバイル特化で生活データを記録し、FirebaseとCSVエクスポートを通じてAI分析につなげるためのアプリです。Next.js (App Router) + TypeScript + Tailwind CSS v4 をベースにし、Vercelデプロイを想定しています。
 
