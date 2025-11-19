@@ -245,16 +245,19 @@ export default function TodayPage() {
         <StatTile
           label="SLEEP"
           value={computedSleepHours ? `${computedSleepHours}h` : "--"}
+          tone="indigo"
         />
         <StatTile
           label="MORNING MOOD"
           value={record.moodMorning ?? "-"}
           unit="/ 5"
+          tone="mint"
         />
-        <StatTile label="HRV" value={record.hrv ?? "--"} unit="ms" />
+        <StatTile label="HRV" value={record.hrv ?? "--"} unit="ms" tone="violet" />
         <StatTile
           label="STEPS"
           value={record.steps?.toLocaleString() ?? "--"}
+          tone="sky"
         />
       </section>
 
@@ -262,7 +265,7 @@ export default function TodayPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* 左カラム：朝 + 食事 */}
         <div className="space-y-6">
-          <SectionCard title="Morning Log">
+          <SectionCard title="Morning Log" accent="mint">
             <form
               className="space-y-5"
               onSubmit={(event) => {
@@ -343,6 +346,7 @@ export default function TodayPage() {
                 title="起床時の体調"
                 helper="起きた直後の体調スコア"
                 value={record.wakeCondition ?? 3}
+                tone="sky"
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -366,6 +370,7 @@ export default function TodayPage() {
                 title="朝の気分"
                 helper="今日はどれくらい晴れていますか？"
                 value={record.moodMorning ?? 3}
+                tone="mint"
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -377,6 +382,7 @@ export default function TodayPage() {
                 title="眠気"
                 helper="午前中の眠気レベル"
                 value={record.sleepiness ?? 3}
+                tone="rose"
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -394,6 +400,7 @@ export default function TodayPage() {
             title="Nutrition"
             description="摂取時間・メモ・写真で食事を記録します。"
             icon={<Droplets className="h-4 w-4 text-sky-500" />}
+            accent="amber"
           >
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
@@ -519,12 +526,14 @@ export default function TodayPage() {
             title="Evening Log"
             description="1日の体調と感情をまとめます。"
             icon={<Moon className="h-4 w-4 text-slate-500" />}
+            accent="indigo"
           >
             <div className="space-y-4">
               <MoodRange
                 title="1日の体調"
                 helper="夕方〜夜の状態"
                 value={record.moodEvening ?? 3}
+                tone="indigo"
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -631,22 +640,78 @@ function MoodRange({
   helper,
   value,
   onChange,
+  tone = "mint",
 }: {
   title: string;
   helper: string;
   value: number;
   onChange: (value: number) => void;
+  tone?: "mint" | "sky" | "indigo" | "violet" | "rose";
 }) {
+  const toneContainer =
+    tone === "sky"
+      ? "border-sky-100"
+      : tone === "indigo"
+      ? "border-indigo-100"
+      : tone === "violet"
+      ? "border-violet-100"
+      : tone === "rose"
+      ? "border-rose-100"
+      : "border-mint-100";
+
+  const toneTitle =
+    tone === "sky"
+      ? "text-sky-700"
+      : tone === "indigo"
+      ? "text-indigo-700"
+      : tone === "violet"
+      ? "text-violet-700"
+      : tone === "rose"
+      ? "text-rose-700"
+      : "text-mint-700";
+
+  const toneValue =
+    tone === "sky"
+      ? "text-sky-700"
+      : tone === "indigo"
+      ? "text-indigo-700"
+      : tone === "violet"
+      ? "text-violet-700"
+      : tone === "rose"
+      ? "text-rose-700"
+      : "text-mint-700";
+
+  const toneAccent =
+    tone === "sky"
+      ? "accent-sky-500"
+      : tone === "indigo"
+      ? "accent-indigo-500"
+      : tone === "violet"
+      ? "accent-violet-500"
+      : tone === "rose"
+      ? "accent-rose-500"
+      : "accent-mint-500";
+
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div
+      className={cn(
+        "rounded-lg border bg-white/95 p-4 shadow-[var(--shadow-soft)]",
+        toneContainer
+      )}
+    >
       <div className="flex items-center justify-between text-sm">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+          <p
+            className={cn(
+              "text-xs font-semibold uppercase tracking-[0.24em]",
+              toneTitle
+            )}
+          >
             {title}
           </p>
           <p className="text-[0.75rem] text-slate-500">{helper}</p>
         </div>
-        <span className="text-sm font-semibold text-slate-700">
+        <span className={cn("text-sm font-semibold", toneValue)}>
           {value} / 5
         </span>
       </div>
@@ -656,7 +721,7 @@ function MoodRange({
         max="5"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
-        className="mt-3 w-full accent-mint-500"
+        className={cn("mt-3 w-full", toneAccent)}
       />
       <div className="mt-1 flex justify-between text-[0.65rem] text-slate-400">
         <span>低い</span>
@@ -670,16 +735,44 @@ type StatTileProps = {
   label: string;
   value: string | number;
   unit?: string;
+  tone?: "mint" | "sky" | "indigo" | "violet" | "rose";
 };
 
-function StatTile({ label, value, unit }: StatTileProps) {
+function StatTile({ label, value, unit, tone = "mint" }: StatTileProps) {
+  const toneClasses =
+    tone === "sky"
+      ? "border-sky-100 bg-gradient-to-br from-sky-50 to-white"
+      : tone === "indigo"
+      ? "border-indigo-100 bg-gradient-to-br from-indigo-50 to-white"
+      : tone === "violet"
+      ? "border-violet-100 bg-gradient-to-br from-violet-50 to-white"
+      : tone === "rose"
+      ? "border-rose-100 bg-gradient-to-br from-rose-50 to-white"
+      : "border-mint-100 bg-gradient-to-br from-mint-50 to-white";
+
+  const valueColor =
+    tone === "sky"
+      ? "text-sky-800"
+      : tone === "indigo"
+      ? "text-indigo-800"
+      : tone === "violet"
+      ? "text-violet-800"
+      : tone === "rose"
+      ? "text-rose-800"
+      : "text-mint-800";
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">
+    <div
+      className={cn(
+        "rounded-xl border p-4 shadow-sm transition-colors",
+        toneClasses
+      )}
+    >
+      <span className="mb-1 block text-[0.65rem] font-bold uppercase tracking-wider text-slate-500">
         {label}
       </span>
       <div className="flex items-baseline gap-1">
-        <span className="font-mono text-2xl font-extrabold text-slate-900">
+        <span className={cn("font-mono text-2xl font-extrabold", valueColor)}>
           {value}
         </span>
         {unit && (
@@ -695,6 +788,7 @@ type SectionCardProps = {
   description?: string;
   icon?: ReactNode;
   children: ReactNode;
+  accent?: "mint" | "sky" | "indigo" | "violet" | "rose" | "amber";
 };
 
 function SectionCard({
@@ -702,10 +796,24 @@ function SectionCard({
   description,
   icon,
   children,
+  accent = "mint",
 }: SectionCardProps) {
+  const headerAccent =
+    accent === "sky"
+      ? "border-sky-100 bg-gradient-to-r from-sky-50/80 to-blue-50/80"
+      : accent === "indigo"
+      ? "border-indigo-100 bg-gradient-to-r from-indigo-50/80 to-violet-50/80"
+      : accent === "violet"
+      ? "border-violet-100 bg-gradient-to-r from-violet-50/80 to-rose-50/80"
+      : accent === "rose"
+      ? "border-rose-100 bg-gradient-to-r from-rose-50/80 to-amber-50/80"
+      : accent === "amber"
+      ? "border-amber-100 bg-gradient-to-r from-amber-50/80 to-rose-50/80"
+      : "border-mint-100 bg-gradient-to-r from-mint-50/80 to-sky-50/80";
+
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-soft)]">
-      <div className="border-b border-slate-100 bg-slate-50/60 px-5 py-3">
+      <div className={cn("border-b px-5 py-3", headerAccent)}>
         <div className="flex items-center gap-2">
           {icon && (
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white">
