@@ -4,12 +4,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { DailyRecord } from "@/types/daily-record";
 import { todayKey } from "@/lib/date";
+import {
+  Activity,
+  BrainCircuit,
+  Footprints,
+  Moon,
+  TrendingUp,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const ranges = [
-  { label: "7日", value: 6 },
-  { label: "14日", value: 13 },
-  { label: "30日", value: 29 },
-  { label: "90日", value: 89 },
+  { label: "7 Days", value: 6 },
+  { label: "14 Days", value: 13 },
+  { label: "30 Days", value: 29 },
+  { label: "90 Days", value: 89 },
 ];
 
 export default function HistoryPage() {
@@ -51,162 +59,208 @@ export default function HistoryPage() {
   const correlations = useMemo(() => buildCorrelations(records), [records]);
 
   return (
-    <div className="space-y-6 pb-16 md:pb-10">
-      {/* フィルターとレンジ選択 */}
-      <section className="rounded-3xl border border-sky-100/70 bg-gradient-to-r from-sky-50 to-mint-50 p-5 shadow-inner shadow-sky-100/70">
+    <div className="space-y-8 pb-20">
+      {/* ヘッダー & レンジ選択 */}
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-              REVIEW MODE
-            </p>
-            <h2 className="text-xl font-semibold">過去の記録を俯瞰</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">
+            Review
+          </h2>
+          <div className="flex rounded-xl bg-slate-100 p-1">
+            {ranges.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setRange(option.value)}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
+                  range === option.value
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          <button
-            className="text-xs font-semibold text-sky-600"
-            disabled={loading}
-            onClick={() => loadRecords(range, false)}
-          >
-            {loading ? "更新中…" : "最新"}
-          </button>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {ranges.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setRange(option.value)}
-              className={`rounded-full px-4 py-1 text-sm font-semibold ${
-                range === option.value
-                  ? "bg-sky-500 text-white shadow-lg shadow-sky-200/60"
-                  : "border border-white/60 bg-white/80 text-slate-500 shadow-sm"
-              }`}
+        {error && (
+          <p className="rounded-lg bg-red-50 p-3 text-sm font-bold text-red-500">
+            {error}
+          </p>
+        )}
+      </section>
+
+      {/* ダイジェスト */}
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <SummaryCard
+          label="Avg Sleep"
+          value={summary.avgSleepHours}
+          unit="h"
+          icon={<Moon className="h-4 w-4 text-indigo-500" />}
+        />
+        <SummaryCard
+          label="Avg Mood"
+          value={summary.avgMood}
+          unit="/ 5"
+          icon={<BrainCircuit className="h-4 w-4 text-mint-600" />}
+        />
+        <SummaryCard
+          label="Avg Steps"
+          value={summary.avgSteps.toLocaleString()}
+          unit="steps"
+          icon={<Footprints className="h-4 w-4 text-orange-500" />}
+        />
+        <SummaryCard
+          label="Avg HRV"
+          value={summary.avgHrv || "--"}
+          unit="ms"
+          icon={<Activity className="h-4 w-4 text-rose-500" />}
+        />
+      </section>
+
+      {/* 相関インサイト */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <TrendingUp className="h-4 w-4 text-slate-400" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Correlations
+          </h3>
+        </div>
+        <div className="grid gap-3">
+          {correlations.map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-5 shadow-[var(--shadow-soft)]"
             >
-              {option.label}
-            </button>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  {item.label}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">{item.desc}</p>
+              </div>
+              <div className="text-right">
+                <span
+                  className={cn(
+                    "block text-xl font-bold",
+                    item.value === "--"
+                      ? "text-slate-300"
+                      : Number(item.value) > 0.5
+                      ? "text-mint-600"
+                      : Number(item.value) < -0.5
+                      ? "text-rose-500"
+                      : "text-slate-700"
+                  )}
+                >
+                  {item.value}
+                </span>
+                <span className="text-[0.6rem] font-bold uppercase tracking-wider text-slate-400">
+                  {item.trend || "No Data"}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
-        {error && <p className="pt-3 text-sm text-red-500">{error}</p>}
       </section>
 
-      {/* ダイジェスト（上段：結果の要約） */}
-      <section className="space-y-3 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)] md:gap-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">ダイジェスト</h3>
-          <span className="text-xs font-semibold text-mint-600">
-            {summary.rangeLabel}
+      {/* タイムライン */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            Timeline
+          </h3>
+          <span className="text-xs font-bold text-slate-400">
+            {records.length} Records
           </span>
         </div>
-        <div className="rounded-3xl border border-slate-900/5 bg-white p-5 shadow-lg shadow-mint-100/70">
-          <p className="text-sm text-slate-500">
-            平均睡眠は{" "}
-            <strong className="text-mint-700">{summary.avgSleepHours}h</strong>、
-            気分スコアは{" "}
-            <strong className="text-mint-700">{summary.avgMood}</strong>でした。
-            歩数は平均{" "}
-            <strong className="text-mint-700">
-              {summary.avgSteps.toLocaleString()}歩
-            </strong>
-            、平均HRVは{" "}
-            <strong className="text-mint-700">
-              {summary.avgHrv ? `${summary.avgHrv}ms` : "--"}
-            </strong>
-            です。
-          </p>
-          <div className="mt-4 grid gap-3 text-sm">
-            <div className="flex items-center justify-between rounded-2xl bg-mint-50/80 px-4 py-2">
-              <span className="font-semibold text-slate-600">記録日数</span>
-              <span className="text-mint-700">{summary.days}日</span>
-            </div>
-            <div className="flex items-center justify-between rounded-2xl bg-sky-50/80 px-4 py-2">
-              <span className="font-semibold text-slate-600">
-                睡眠アラート ({"<"}5h)
-              </span>
-              <span className="text-sky-700">{summary.sleepAlerts}日</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* タイムライン（下段：日ごとのログ） */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">タイムライン</h3>
-          <span className="text-xs text-slate-500">
-            最新 {records.length} / {range + 1}日
-          </span>
-        </div>
-        <div className="space-y-3">
+        <div className="relative space-y-3">
+          <div className="pointer-events-none absolute left-4 top-4 bottom-4 w-px bg-slate-100" />
           {records.map((record) => (
-            <article
-              key={record.date}
-              className="rounded-3xl border border-white/80 bg-white/90 p-4 shadow-lg shadow-slate-100/80"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-slate-600">
-                    {formatJapaneseDate(record.date)}
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    睡眠 {record.sleepStart ?? "--"} - {record.sleepEnd ?? "--"}
-                  </p>
+            <article key={record.date} className="flex gap-4">
+              <div className="flex flex-col items-center">
+                <div className="z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 border-slate-100 bg-white shadow-sm">
+                  <div
+                    className={cn(
+                      "h-2.5 w-2.5 rounded-full",
+                      (record.moodEvening ?? record.moodMorning ?? 3) >= 4
+                        ? "bg-mint-400"
+                        : (record.moodEvening ?? record.moodMorning ?? 3) <= 2
+                        ? "bg-slate-400"
+                        : "bg-sky-400"
+                    )}
+                  />
                 </div>
-                <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-semibold text-mint-700">
-                  Mood {record.moodEvening ?? record.moodMorning ?? "-"}
-                </span>
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                <span className="rounded-full bg-slate-100 px-3 py-1">
-                  睡眠 {record.sleepHours ?? "-"}h
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1">
-                  歩数 {record.steps?.toLocaleString() ?? "-"}
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1">
-                  水分 {record.hydrationMl ?? "-"}ml
-                </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1">
-                  HRV {record.hrv != null ? `${record.hrv}ms` : "-"}
-                </span>
+              <div className="mb-2 flex-1 rounded-2xl border border-slate-100 bg-white p-4 shadow-[var(--shadow-soft)]">
+                <div className="mb-2 flex items-start justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800">
+                      {formatJapaneseDate(record.date)}
+                    </h4>
+                    <p className="mt-0.5 text-xs font-medium text-slate-400">
+                      {record.sleepStart
+                        ? `睡眠 ${record.sleepStart} - ${record.sleepEnd ?? "--"}`
+                        : "睡眠記録なし"}
+                      {record.sleepHours != null && (
+                        <>
+                          <span className="mx-2">·</span>
+                          {record.sleepHours}h
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <span className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-bold text-slate-600">
+                    HRV {record.hrv ?? "-"}
+                  </span>
+                </div>
+                {(record.emotionNote || record.highlight) && (
+                  <div className="mt-2 border-t border-slate-50 pt-2 text-sm leading-relaxed text-slate-600">
+                    {record.emotionNote && <p>{record.emotionNote}</p>}
+                    {record.highlight && (
+                      <p className="mt-1 font-bold text-mint-700">
+                        ✨ {record.highlight}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              <p className="mt-3 text-sm text-slate-600">
-                {record.emotionNote || record.highlight || record.journal || "メモなし"}
-              </p>
             </article>
           ))}
           {records.length === 0 && !loading && (
-            <p className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-slate-500">
+            <p className="rounded-2xl border border-dashed border-slate-200 bg-white/70 p-6 text-center text-sm text-slate-500">
               まだ記録がありません。Today画面から記録を追加してください。
             </p>
           )}
         </div>
       </section>
+    </div>
+  );
+}
 
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-200/60">
-        <h3 className="text-lg font-semibold">関連性のヒント</h3>
-        <p className="text-sm text-slate-500">
-          CSVでの分析前に、気になる相関をピックアップ。
-        </p>
-        <div className="mt-4 space-y-3">
-          {correlations.map((item) => (
-            <div
-              key={item.label}
-              className="rounded-2xl border border-slate-100/70 bg-slate-50/70 px-4 py-3"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                {item.label}
-              </p>
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-2xl font-semibold text-slate-900">
-                  {item.value}
-                </span>
-                <span className="text-xs font-semibold text-mint-600">
-                  {item.trend}
-                </span>
-              </div>
-              <p className="text-sm text-slate-500">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+function SummaryCard({
+  label,
+  value,
+  unit,
+  icon,
+}: {
+  label: string;
+  value: string | number;
+  unit: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex h-32 flex-col justify-between rounded-2xl border border-slate-100/60 bg-white p-5 shadow-[var(--shadow-soft)]">
+      <div className="flex items-start justify-between">
+        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-slate-400">
+          {label}
+        </span>
+        <div className="rounded-lg bg-slate-50 p-1.5">{icon}</div>
+      </div>
+      <div>
+        <span className="block text-2xl font-bold tracking-tight text-slate-800">
+          {value}
+        </span>
+        <span className="ml-1 text-xs font-bold text-slate-400">{unit}</span>
+      </div>
     </div>
   );
 }

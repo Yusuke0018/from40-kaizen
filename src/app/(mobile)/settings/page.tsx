@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
+import {
+  Bell,
+  ChevronRight,
+  Database,
+  FlaskConical,
+  LogOut,
+  User,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const reminders = [
   {
@@ -45,102 +54,133 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 pb-16 md:pb-10">
-      {/* アカウント */}
-      <section className="rounded-3xl border border-slate-900/5 bg-white/95 p-5 shadow-lg shadow-mint-200/70">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
-          SETTINGS
-        </p>
-        <h2 className="text-xl font-semibold">習慣・データ管理</h2>
-        <p className="text-sm text-slate-500">
-          Firebaseで認証＆同期され、複数端末から同じ体験でアクセスできます。
-        </p>
-        <div className="mt-4 rounded-2xl border border-slate-100/70 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
-          <p className="font-semibold text-slate-700">ログイン中</p>
-          <p>{user?.email}</p>
+    <div className="space-y-8 pb-10">
+      <section>
+        <h2 className="mb-6 text-3xl font-bold tracking-tight text-slate-900">
+          Settings
+        </h2>
+
+        {/* アカウント情報カード */}
+        <div className="relative mb-6 overflow-hidden rounded-3xl bg-slate-900 p-6 text-white shadow-lg">
+          <div className="absolute -mr-10 -mt-10 h-32 w-32 rounded-full bg-white/5 blur-2xl" />
+          <div className="relative z-10 flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/10">
+              <User className="h-6 w-6 text-mint-300" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Account
+              </p>
+              <p className="text-sm font-medium text-white">{user?.email}</p>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => void handleSignOut()}
-          className="mt-4 w-full rounded-full border border-slate-200 py-3 text-sm font-semibold text-slate-500"
-          disabled={signingOut}
-        >
-          {signingOut ? "サインアウト中…" : "サインアウト"}
-        </button>
       </section>
 
       {/* リマインダー */}
-      <section className="rounded-3xl border border-mint-100/70 bg-mint-50/80 p-5 shadow-inner shadow-mint-100/70">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">リマインダー</h3>
-          <button className="text-xs font-semibold text-mint-600">追加</button>
-        </div>
-        <div className="mt-4 space-y-3">
-          {reminders.map((reminder) => (
-            <div
-              key={reminder.title}
-              className="flex items-start justify-between rounded-2xl border border-white/70 bg-white/70 px-4 py-3"
-            >
-              <div>
-                <p className="text-sm font-semibold">{reminder.title}</p>
-                <p className="text-xs text-slate-500">{reminder.desc}</p>
-              </div>
-              <div className="text-right text-sm font-semibold text-mint-600">
-                {reminder.time}
-              </div>
+      <SettingsGroup
+        title="Notifications"
+        icon={<Bell className="h-4 w-4" />}
+      >
+        {reminders.map((item, index) => (
+          <div
+            key={item.title}
+            className={cn(
+              "flex items-center justify-between p-4",
+              index !== reminders.length - 1 && "border-b border-slate-100"
+            )}
+          >
+            <div>
+              <p className="text-sm font-bold text-slate-700">{item.title}</p>
+              <p className="mt-0.5 text-xs text-slate-400">{item.desc}</p>
             </div>
-          ))}
-        </div>
-      </section>
+            <div className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+              {item.time}
+            </div>
+          </div>
+        ))}
+      </SettingsGroup>
 
       {/* 実験タグ */}
-      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-sky-100/70">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">実験タグ</h3>
-            <p className="text-sm text-slate-500">
-              CSVにも同じタグが出力されます。
-            </p>
-          </div>
-          <button className="text-xs font-semibold text-sky-600">編集</button>
-        </div>
-        <div className="mt-4 space-y-3">
-          {experiments.map((experiment) => (
-            <div
-              key={experiment.name}
-              className="rounded-2xl border border-slate-100/80 bg-slate-50/70 px-4 py-3"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-slate-700">
-                  {experiment.name}
-                </p>
-                <span className="text-xs font-semibold text-mint-600">
-                  {experiment.status}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">{experiment.note}</p>
+      <SettingsGroup
+        title="Active Experiments"
+        icon={<FlaskConical className="h-4 w-4" />}
+      >
+        {experiments.map((experiment, index) => (
+          <div
+            key={experiment.name}
+            className={cn(
+              "flex items-center justify-between p-4",
+              index !== experiments.length - 1 && "border-b border-slate-100"
+            )}
+          >
+            <div>
+              <p className="text-sm font-bold text-slate-700">
+                {experiment.name}
+              </p>
+              <p className="mt-0.5 text-xs text-slate-400">{experiment.note}</p>
             </div>
-          ))}
-        </div>
-      </section>
+            <span className="rounded-md bg-mint-50 px-2 py-1 text-xs font-bold text-mint-600">
+              {experiment.status}
+            </span>
+          </div>
+        ))}
+      </SettingsGroup>
 
       {/* 連携予定 */}
-      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-mint-100/70">
-        <h3 className="text-lg font-semibold">データ連携予定</h3>
-        <p className="text-sm text-slate-500">
-          Apple HealthKit / Google Fit との連携、Firebase Storageの写真保管、CSV自動生成のスケジュール設定などをここで管理予定です。
-        </p>
-        <ul className="mt-4 space-y-2 text-sm text-slate-600">
-          <li className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
-            HealthKitシンク: 睡眠・心拍・歩数を自動取得
-          </li>
-          <li className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
-            Firebase Storage: 写真の最適化＆暗号化ストア
-          </li>
-          <li className="rounded-2xl border border-dashed border-slate-200 px-4 py-3">
-            週次サマリー: Vercel CronでAIサマリーを生成
-          </li>
-        </ul>
-      </section>
+      <SettingsGroup
+        title="Integrations"
+        icon={<Database className="h-4 w-4" />}
+      >
+        <div className="flex cursor-pointer items-center justify-between p-4">
+          <span className="text-sm font-bold text-slate-700">
+            HealthKit Sync
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-300">
+              Coming soon
+            </span>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+          </div>
+        </div>
+      </SettingsGroup>
+
+      <button
+        onClick={() => void handleSignOut()}
+        disabled={signingOut}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-100 bg-rose-50/50 p-4 text-sm font-bold text-rose-600 transition-colors hover:bg-rose-100 active:scale-[0.98]"
+      >
+        <LogOut className="h-4 w-4" />
+        {signingOut ? "サインアウト中…" : "サインアウト"}
+      </button>
+
+      <p className="pt-6 text-center text-[0.65rem] font-bold uppercase tracking-widest text-slate-300">
+        40 Chronicle v0.1.0
+      </p>
     </div>
+  );
+}
+
+function SettingsGroup({
+  title,
+  icon,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2 px-1">
+        <span className="text-slate-400">{icon}</span>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          {title}
+        </h3>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[var(--shadow-soft)]">
+        {children}
+      </div>
+    </section>
   );
 }
