@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
+import type { Goal } from "@/types/goal";
 import {
   Bell,
   ChevronRight,
@@ -25,24 +26,89 @@ const reminders = [
     desc: "寝る前の振り返りをリマインド",
     active: true,
   },
-];
-
-const experiments = [
-  {
-    name: "砂糖リセット",
-    status: "Day 12 / 30",
-    note: "甘いものを日中控える",
-  },
-  {
-    name: "夜スクリーンオフ",
-    status: "Week 2",
-    note: "就寝30分前に画面オフ",
-  },
-];
+] as const;
 
 export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
   const [signingOut, setSigningOut] = useState(false);
+
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(false);
+  const [goalError, setGoalError] = useState<string | null>(null);
+
+  const [goalText, setGoalText] = useState("");
+  const [goalStartDate, setGoalStartDate] = useState(isoToday());
+  const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(6)); // デフォルト1週間
+  const [savingGoal, setSavingGoal] = useState(false);
+
+  const activeGoals = useMemo(() => goals, [goals]);
+
+  const loadGoals = useCallback(async () => {
+    if (!user) return;
+    setLoadingGoals(true);
+    setGoalError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/goals", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load goals");
+      }
+      const data = (await res.json()) as Goal[];
+      setGoals(data);
+    } catch (error) {
+      console.error(error);
+      setGoalError("目標の取得に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadGoals();
+  }, [user, loadGoals]);
+
+  async function handleCreateGoal() {
+    if (!user) return;
+    if (!goalText.trim()) return;
+
+    setSavingGoal(true);
+    setGoalError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: goalText.trim(),
+          startDate: goalStartDate,
+          endDate: goalEndDate,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        throw new Error(data?.error ?? "Failed to save goal");
+      }
+      setGoalText("");
+      setGoalStartDate(isoToday());
+      setGoalEndDate(isoTodayPlusDays(6));
+      await loadGoals();
+    } catch (error) {
+      console.error(error);
+      setGoalError(
+        "目標の保存に失敗しました。入力内容と期間を確認してください。"
+      );
+    } finally {
+      setSavingGoal(false);
+    }
+  }
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -78,10 +144,7 @@ export default function SettingsPage() {
       </section>
 
       {/* リマインダー */}
-      <SettingsGroup
-        title="Notifications"
-        icon={<Bell className="h-4 w-4" />}
-      >
+      <SettingsGroup title="Notifications" icon={<Bell className="h-4 w-4" />}>
         {reminders.map((item, index) => (
           <div
             key={item.title}
@@ -101,37 +164,135 @@ export default function SettingsPage() {
         ))}
       </SettingsGroup>
 
-      {/* 実験タグ */}
-      <SettingsGroup
-        title="Active Experiments"
-        icon={<FlaskConical className="h-4 w-4" />}
-      >
-        {experiments.map((experiment, index) => (
-          <div
-            key={experiment.name}
-            className={cn(
-              "flex items-center justify-between p-4",
-              index !== experiments.length - 1 && "border-b border-slate-100"
-            )}
-          >
-            <div>
-              <p className="text-sm font-bold text-slate-700">
-                {experiment.name}
-              </p>
-              <p className="mt-0.5 text-xs text-slate-400">{experiment.note}</p>
-            </div>
-            <span className="rounded-md bg-mint-50 px-2 py-1 text-xs font-bold text-mint-600">
-              {experiment.status}
-            </span>
+      {/* 期間付き目標 */}
+      <SettingsGroup title="Goals" icon={<FlaskConical className="h-4 w-4" />}>
+        <div className="space-y-4 p-4">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-500">
+              一週間・一ヶ月など、期間を決めた目標を記録します。
+            </p>
+            <p className="text-[0.7rem] text-slate-400">
+              期間が終了してから24時間経過すると、自動的にここから非表示になります。
+            </p>
           </div>
-        ))}
+
+          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                目標内容
+              </span>
+              <textarea
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
+                rows={3}
+                placeholder="例: 1週間、カフェインは午前中だけにする"
+                value={goalText}
+                onChange={(event) => setGoalText(event.target.value)}
+              />
+            </label>
+
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                  開始日
+                </span>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
+                  value={goalStartDate}
+                  onChange={(event) => setGoalStartDate(event.target.value)}
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                  終了日
+                </span>
+                <input
+                  type="date"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
+                  value={goalEndDate}
+                  onChange={(event) => setGoalEndDate(event.target.value)}
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-bold text-slate-600 hover:border-mint-300 hover:text-mint-700"
+                  onClick={() => {
+                    const start = isoToday();
+                    setGoalStartDate(start);
+                    setGoalEndDate(isoTodayPlusDays(6));
+                  }}
+                >
+                  今日から1週間
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[0.7rem] font-bold text-slate-600 hover:border-mint-300 hover:text-mint-700"
+                  onClick={() => {
+                    const start = isoToday();
+                    setGoalStartDate(start);
+                    setGoalEndDate(isoTodayPlusMonths(1));
+                  }}
+                >
+                  今日から1ヶ月
+                </button>
+              </div>
+              <p className="text-[0.7rem] font-medium text-slate-500">
+                期間: {formatDate(goalStartDate)} 〜 {formatDate(goalEndDate)}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void handleCreateGoal()}
+              disabled={savingGoal || !goalText.trim()}
+              className="mt-1 w-full rounded-lg bg-mint-600 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-mint-700 disabled:opacity-60"
+            >
+              {savingGoal ? "保存中…" : "目標を追加"}
+            </button>
+          </div>
+
+          {goalError && (
+            <p className="text-xs font-semibold text-rose-500">{goalError}</p>
+          )}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <p className="font-bold uppercase tracking-wider text-slate-500">
+                進行中の目標
+              </p>
+              <p className="font-semibold text-slate-400">
+                {loadingGoals ? "読み込み中…" : `${activeGoals.length} 件`}
+              </p>
+            </div>
+            {activeGoals.length === 0 && !loadingGoals && (
+              <p className="rounded-lg border border-dashed border-slate-200 bg-white/80 p-3 text-center text-[0.75rem] text-slate-500">
+                まだ期間付きの目標はありません。
+              </p>
+            )}
+            <div className="space-y-2">
+              {activeGoals.map((goal) => (
+                <div
+                  key={goal.id}
+                  className="space-y-1 rounded-lg border border-slate-100 bg-white p-3 text-xs text-slate-700 shadow-[var(--shadow-soft)]"
+                >
+                  <p className="font-semibold">{goal.text}</p>
+                  <p className="text-[0.7rem] text-slate-400">
+                    期間: {formatDate(goal.startDate)} 〜{" "}
+                    {formatDate(goal.endDate)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </SettingsGroup>
 
       {/* 連携予定 */}
-      <SettingsGroup
-        title="Integrations"
-        icon={<Database className="h-4 w-4" />}
-      >
+      <SettingsGroup title="Integrations" icon={<Database className="h-4 w-4" />}>
         <div className="flex cursor-pointer items-center justify-between p-4">
           <span className="text-sm font-bold text-slate-700">
             HealthKit Sync
@@ -184,3 +345,40 @@ function SettingsGroup({
     </section>
   );
 }
+
+function isoToday() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = `${now.getMonth() + 1}`.padStart(2, "0");
+  const day = `${now.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isoTodayPlusDays(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isoTodayPlusMonths(months: number) {
+  const date = new Date();
+  date.setMonth(date.getMonth() + months);
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatDate(input: string | undefined | null) {
+  if (!input) return "-";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return input;
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+}
+
