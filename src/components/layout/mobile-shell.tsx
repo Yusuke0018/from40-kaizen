@@ -85,7 +85,7 @@ export function MobileShell({ children }: MobileShellProps) {
           </div>
         </header>
 
-        <main className="relative z-10 w-full max-w-md flex-1 space-y-6 px-5 pb-32 pt-6 md:max-w-2xl md:px-10 md:pt-8">
+        <main className="relative z-10 w-full max-w-md flex-1 space-y-6 px-5 pb-32 pt-6 md:max-w-4xl lg:max-w-5xl md:px-10 md:pt-8 md:mx-auto">
           {children}
         </main>
       </div>
