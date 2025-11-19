@@ -1,0 +1,9 @@
+timestamp: 20251119-175340
+branch: main
+head: b7068f19f8dad06653c000cd959914299bbd6b4f
+lint: ok
+
+changes:
+ src/app/(mobile)/settings/page.tsx     | 2 +-
+ src/components/layout/mobile-shell.tsx | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)

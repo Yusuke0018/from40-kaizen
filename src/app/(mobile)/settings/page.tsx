@@ -100,7 +100,7 @@ export default function SettingsPage() {
     <div className="space-y-8 pb-10">
       <section>
         <h2 className="mb-6 text-3xl font-bold tracking-tight text-slate-900">
-          Settings
+          Goals
         </h2>
 
         {/* アカウント情報カード */}

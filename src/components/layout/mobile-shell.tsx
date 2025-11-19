@@ -30,7 +30,7 @@ const NAV_ITEMS = [
   },
   {
     href: "/settings",
-    label: "Config",
+    label: "Goals",
     icon: Settings,
   },
 ];
