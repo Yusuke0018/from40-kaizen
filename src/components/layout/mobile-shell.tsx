@@ -56,7 +56,7 @@ export function MobileShell({ children }: MobileShellProps) {
       <aside className="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-mint-200 bg-white px-6 py-8 md:flex">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-mint-800">
-            40 Chronicle
+            日々是悠々
           </h1>
           <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-mint-700">
             EXPERIMENT LOG
@@ -77,7 +77,7 @@ export function MobileShell({ children }: MobileShellProps) {
               {date} ({weekday})
             </p>
             <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
-              40 Chronicle
+              日々是悠々
             </h2>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-mint-200 bg-white text-mint-600 shadow-sm">

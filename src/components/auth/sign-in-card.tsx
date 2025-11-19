@@ -39,7 +39,7 @@ export function SignInCard() {
     <div className="flex min-h-screen items-center justify-center bg-mint-50 px-6 py-12">
       <div className="w-full max-w-md rounded-3xl border border-white/50 bg-white/90 p-8 text-center shadow-2xl shadow-mint-100/70">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
-          40 CHRONICLE
+          日々是悠々
         </p>
         <h1 className="pt-2 text-2xl font-semibold">
           {mode === "signin" ? "メールとパスワードでログイン" : "アカウントを作成"}

@@ -17,11 +17,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://40-chronicle.vercel.app"),
   title: {
-    default: "40 Chronicle",
-    template: "%s | 40 Chronicle",
+    default: "日々是悠々",
+    template: "%s | 日々是悠々",
   },
   description:
-    "Mobile-first life chronicle for experiments, nutrition, and vitality tracking with Firebase + Next.js.",
+    "日々の実験とコンディションを整然と記録する、モバイルファーストのライフログアプリ。",
 };
 
 export default function RootLayout({

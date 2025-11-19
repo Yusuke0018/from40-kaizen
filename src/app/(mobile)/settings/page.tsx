@@ -155,7 +155,7 @@ export default function SettingsPage() {
       </button>
 
       <p className="pt-6 text-center text-[0.65rem] font-bold uppercase tracking-widest text-slate-300">
-        40 Chronicle v0.1.0
+        日々是悠々 v0.1.0
       </p>
     </div>
   );
