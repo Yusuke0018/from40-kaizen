@@ -52,7 +52,7 @@ export function MobileShell({ children }: MobileShellProps) {
   const greeting = getGreeting(now.getHours());
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-5xl bg-mint-50 text-slate-900 md:rounded-[32px] md:border md:border-mint-100/70 md:shadow-2xl md:shadow-mint-200/60 md:backdrop-blur-xl">
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl xl:max-w-7xl bg-mint-50/95 text-slate-900 md:rounded-[32px] md:border md:border-mint-100/70 md:bg-white/95 md:shadow-2xl md:shadow-slate-900/10 md:backdrop-blur-xl">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-mint-200/70 via-transparent to-transparent md:h-full md:w-80 md:bg-gradient-to-b md:from-slate-950 md:via-slate-900 md:to-slate-900/90 md:rounded-l-[32px]" />
       <div className="relative z-10 flex w-full flex-col md:flex-row">
         {/* サイドレール（PC） */}
@@ -107,7 +107,7 @@ export function MobileShell({ children }: MobileShellProps) {
               まず「Today」で入力し、その結果をHistoryやExportで確認できます。
             </p>
           </header>
-          <main className="relative z-10 flex-1 space-y-6 px-6 pb-40 pt-4 md:space-y-5 md:pb-8 md:pt-6">
+          <main className="relative z-10 flex-1 space-y-6 px-6 pb-40 pt-4 md:space-y-5 md:pb-8 md:pt-6 md:px-8 xl:px-10">
             {children}
           </main>
         </div>
