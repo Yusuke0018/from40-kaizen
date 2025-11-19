@@ -59,7 +59,8 @@ export default function TodayPage() {
   const [mealPhotoUrl, setMealPhotoUrl] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsError, setGoalsError] = useState<string | null>(null);
-  const [canEditMoods, setCanEditMoods] = useState(true);
+  const [canEditMorning, setCanEditMorning] = useState(true);
+  const [canEditEvening, setCanEditEvening] = useState(true);
 
   const fetchRecord = useCallback(
     async (date: string) => {
@@ -91,7 +92,9 @@ export default function TodayPage() {
       try {
         const data = await fetchRecord(date);
         setRecord(data ?? createEmptyRecord(date));
-        setCanEditMoods(!data);
+        const isNew = !data;
+        setCanEditMorning(isNew);
+        setCanEditEvening(isNew);
       } catch (err) {
         console.error(err);
         setErrorMessage("既存データの取得に失敗しました。");
@@ -137,8 +140,8 @@ export default function TodayPage() {
     [record.date, record.sleepStart, record.sleepEnd]
   );
 
-  async function handleSave() {
-    if (!user) return;
+  async function saveRecord() {
+    if (!user) return false;
     setSaving(true);
     setStatusMessage(null);
     setErrorMessage(null);
@@ -159,12 +162,27 @@ export default function TodayPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setStatusMessage("保存しました");
-      setCanEditMoods(false);
+      return true;
     } catch (error) {
       console.error(error);
       setErrorMessage("保存に失敗しました。もう一度お試しください。");
+      return false;
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveMorning() {
+    const ok = await saveRecord();
+    if (ok) {
+      setCanEditMorning(false);
+    }
+  }
+
+  async function handleSaveEvening() {
+    const ok = await saveRecord();
+    if (ok) {
+      setCanEditEvening(false);
     }
   }
 
@@ -329,7 +347,7 @@ export default function TodayPage() {
               className="space-y-5"
               onSubmit={(event) => {
                 event.preventDefault();
-                void handleSave();
+                void handleSaveMorning();
               }}
             >
               <div className="grid gap-4 sm:grid-cols-2">
@@ -338,6 +356,7 @@ export default function TodayPage() {
                   type="number"
                   value={record.weightKg ?? ""}
                   placeholder="65.2"
+                  disabled={!canEditMorning}
                   onChange={(value) =>
                     setRecord((prev) => ({
                       ...prev,
@@ -350,10 +369,10 @@ export default function TodayPage() {
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setCanEditMoods((prev) => !prev)}
+                  onClick={() => setCanEditMorning((prev) => !prev)}
                   className="text-[0.7rem] font-semibold text-slate-500 underline-offset-2 hover:text-mint-700"
                 >
-                  {canEditMoods ? "スコア編集モード: ON" : "スコアを編集する"}
+                  {canEditMorning ? "朝のスコア編集モード: ON" : "朝のスコアを編集する"}
                 </button>
               </div>
 
@@ -366,6 +385,7 @@ export default function TodayPage() {
                     label="就寝時刻"
                     type="time"
                     value={record.sleepStart ?? ""}
+                    disabled={!canEditMorning}
                     onChange={(value) =>
                       setRecord((prev) => ({
                         ...prev,
@@ -377,6 +397,7 @@ export default function TodayPage() {
                     label="起床時刻"
                     type="time"
                     value={record.sleepEnd ?? ""}
+                    disabled={!canEditMorning}
                     onChange={(value) =>
                       setRecord((prev) => ({
                         ...prev,
@@ -390,6 +411,7 @@ export default function TodayPage() {
                   type="number"
                   placeholder="54"
                   value={record.avgSleepHr ?? ""}
+                  disabled={!canEditMorning}
                   onChange={(value) =>
                     setRecord((prev) => ({
                       ...prev,
@@ -402,6 +424,7 @@ export default function TodayPage() {
                   type="number"
                   placeholder="65"
                   value={record.hrv ?? ""}
+                  disabled={!canEditMorning}
                   onChange={(value) =>
                     setRecord((prev) => ({
                       ...prev,
@@ -416,7 +439,7 @@ export default function TodayPage() {
                 helper="起きた直後の体調スコア"
                 value={record.wakeCondition ?? 3}
                 tone="sky"
-                readOnly={!canEditMoods}
+                readOnly={!canEditMorning}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -429,7 +452,7 @@ export default function TodayPage() {
                 helper="今日はどれくらい晴れていますか？"
                 value={record.moodMorning ?? 3}
                 tone="mint"
-                readOnly={!canEditMoods}
+                readOnly={!canEditMorning}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -442,7 +465,7 @@ export default function TodayPage() {
                 helper="午前中の眠気レベル"
                 value={record.sleepiness ?? 3}
                 tone="rose"
-                readOnly={!canEditMoods}
+                readOnly={!canEditMorning}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -563,12 +586,23 @@ export default function TodayPage() {
             accent="indigo"
           >
             <div className="space-y-4">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCanEditEvening((prev) => !prev)}
+                  className="text-[0.7rem] font-semibold text-slate-500 underline-offset-2 hover:text-mint-700"
+                >
+                  {canEditEvening
+                    ? "夜のスコア編集モード: ON"
+                    : "夜のスコアを編集する"}
+                </button>
+              </div>
               <MoodRange
                 title="1日の体調"
                 helper="夕方〜夜の状態"
                 value={record.moodEvening ?? 3}
                 tone="indigo"
-                readOnly={!canEditMoods}
+                readOnly={!canEditEvening}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -581,6 +615,7 @@ export default function TodayPage() {
                 type="number"
                 placeholder="8,000"
                 value={record.steps ?? ""}
+                disabled={!canEditEvening}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -593,6 +628,7 @@ export default function TodayPage() {
                 as="textarea"
                 placeholder="例: 午前は穏やか、夕方はやや不安"
                 value={record.emotionNote}
+                disabled={!canEditEvening}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -605,6 +641,7 @@ export default function TodayPage() {
                 as="textarea"
                 placeholder="例: ミッション達成、集中力高め"
                 value={record.highlight}
+                disabled={!canEditEvening}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -617,6 +654,7 @@ export default function TodayPage() {
                 as="textarea"
                 placeholder="例: 夕方に甘いもの欲求、寝る前スマホ触ってしまった"
                 value={record.challenge}
+                disabled={!canEditEvening}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -627,7 +665,7 @@ export default function TodayPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => void handleSave()}
+                onClick={() => void handleSaveEvening()}
                 disabled={saving}
               >
                 {saving ? "保存中…" : "1日の記録を保存"}
@@ -647,9 +685,18 @@ type FieldProps = {
   value: string | number | null;
   onChange: (value: string) => void;
   as?: "textarea";
+  disabled?: boolean;
 };
 
-function Field({ label, placeholder, type, value, onChange, as }: FieldProps) {
+function Field({
+  label,
+  placeholder,
+  type,
+  value,
+  onChange,
+  as,
+  disabled,
+}: FieldProps) {
   if (as === "textarea") {
     return (
       <label className="block text-left">
@@ -659,8 +706,12 @@ function Field({ label, placeholder, type, value, onChange, as }: FieldProps) {
         <textarea
           placeholder={placeholder}
           value={value ?? ""}
+          disabled={disabled}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
+          className={cn(
+            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50",
+            disabled && "cursor-default bg-slate-50 text-slate-400"
+          )}
         />
       </label>
     );
@@ -675,8 +726,12 @@ function Field({ label, placeholder, type, value, onChange, as }: FieldProps) {
         type={type ?? "text"}
         placeholder={placeholder}
         value={value ?? ""}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
+        className={cn(
+          "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50",
+          disabled && "cursor-default bg-slate-50 text-slate-400"
+        )}
       />
     </label>
   );
