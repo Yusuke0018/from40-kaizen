@@ -340,6 +340,18 @@ export default function TodayPage() {
                     }))
                   }
                 />
+                <Field
+                  label="睡眠時平均HRV (ms)"
+                  type="number"
+                  placeholder="65"
+                  value={record.hrv ?? ""}
+                  onChange={(value) =>
+                    setRecord((prev) => ({
+                      ...prev,
+                      hrv: value === "" ? null : Number(value),
+                    }))
+                  }
+                />
               </div>
 
               <MoodRange
@@ -351,18 +363,6 @@ export default function TodayPage() {
                   setRecord((prev) => ({
                     ...prev,
                     wakeCondition: value,
-                  }))
-                }
-              />
-              <Field
-                label="起床時HRV (ms)"
-                type="number"
-                placeholder="65"
-                value={record.hrv ?? ""}
-                onChange={(value) =>
-                  setRecord((prev) => ({
-                    ...prev,
-                    hrv: value === "" ? null : Number(value),
                   }))
                 }
               />

@@ -111,7 +111,7 @@ export default function HistoryPage() {
           icon={<Footprints className="h-4 w-4 text-orange-500" />}
         />
         <SummaryCard
-          label="Avg HRV"
+          label="Avg Sleep HRV"
           value={summary.avgHrv || "--"}
           unit="ms"
           icon={<Activity className="h-4 w-4 text-rose-500" />}
@@ -209,7 +209,7 @@ export default function HistoryPage() {
                     </p>
                   </div>
                   <span className="rounded-lg bg-slate-50 px-2 py-1 text-xs font-bold text-slate-600">
-                    HRV {record.hrv ?? "-"}
+                    Sleep HRV {record.hrv ?? "-"}
                   </span>
                 </div>
                 {(record.emotionNote || record.highlight) && (
