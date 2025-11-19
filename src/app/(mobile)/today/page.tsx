@@ -273,7 +273,7 @@ export default function TodayPage() {
                 void handleSave();
               }}
             >
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label="体重 (kg)"
                   type="number"
@@ -283,18 +283,6 @@ export default function TodayPage() {
                     setRecord((prev) => ({
                       ...prev,
                       weightKg: value === "" ? null : Number(value),
-                    }))
-                  }
-                />
-                <Field
-                  label="歩数"
-                  type="number"
-                  value={record.steps ?? ""}
-                  placeholder="8,000"
-                  onChange={(value) =>
-                    setRecord((prev) => ({
-                      ...prev,
-                      steps: value === "" ? null : Number(value),
                     }))
                   }
                 />
@@ -538,6 +526,18 @@ export default function TodayPage() {
                   setRecord((prev) => ({
                     ...prev,
                     moodEvening: value,
+                  }))
+                }
+              />
+              <Field
+                label="1日の歩数"
+                type="number"
+                placeholder="8,000"
+                value={record.steps ?? ""}
+                onChange={(value) =>
+                  setRecord((prev) => ({
+                    ...prev,
+                    steps: value === "" ? null : Number(value),
                   }))
                 }
               />
