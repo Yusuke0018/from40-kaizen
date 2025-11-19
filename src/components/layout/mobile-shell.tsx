@@ -55,13 +55,15 @@ export function MobileShell({ children }: MobileShellProps) {
       {/* PCサイドバー */}
       <aside className="hidden w-64 flex-shrink-0 flex-col justify-between border-r border-mint-200 bg-white px-6 py-8 md:flex">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-mint-800">
-            日々是悠々
-          </h1>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-widest text-mint-700">
-            EXPERIMENT LOG
-          </p>
-          <p className="mt-4 text-sm font-medium text-slate-600">
+          <div className="inline-flex flex-col items-start rounded-2xl bg-slate-950 px-4 py-3 shadow-md">
+            <span className="text-[0.65rem] font-semibold tracking-[0.3em] text-slate-400">
+              HIBI-KORE-LAB
+            </span>
+            <h1 className="mt-1 text-xl font-semibold tracking-[0.18em] text-white">
+              日々是悠々
+            </h1>
+          </div>
+          <p className="mt-5 text-sm font-medium text-slate-600">
             日々の記録をもとに、睡眠・気分・HRVのパターンを見つけましょう。
           </p>
         </div>
@@ -71,16 +73,16 @@ export function MobileShell({ children }: MobileShellProps) {
       {/* メインエリア */}
       <div className="flex flex-1 flex-col">
         {/* モバイルヘッダー */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-mint-200 bg-mint-50/90 px-5 py-4 backdrop-blur md:hidden">
-          <div>
-            <p className="text-[0.6rem] font-bold uppercase tracking-widest text-mint-700">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-900 bg-slate-950 px-5 py-3 md:hidden">
+          <div className="space-y-1">
+            <p className="text-[0.6rem] font-semibold tracking-[0.3em] text-slate-400">
               {date} ({weekday})
             </p>
-            <h2 className="text-lg font-extrabold tracking-tight text-slate-900">
+            <h2 className="text-lg font-semibold tracking-[0.18em] text-white">
               日々是悠々
             </h2>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-mint-200 bg-white text-mint-600 shadow-sm">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-100 shadow-sm">
             <CalendarDays className="h-4 w-4" />
           </div>
         </header>
