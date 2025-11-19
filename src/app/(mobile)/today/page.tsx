@@ -59,6 +59,7 @@ export default function TodayPage() {
   const [mealPhotoUrl, setMealPhotoUrl] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsError, setGoalsError] = useState<string | null>(null);
+  const [canEditMoods, setCanEditMoods] = useState(true);
 
   const fetchRecord = useCallback(
     async (date: string) => {
@@ -90,6 +91,7 @@ export default function TodayPage() {
       try {
         const data = await fetchRecord(date);
         setRecord(data ?? createEmptyRecord(date));
+        setCanEditMoods(!data);
       } catch (err) {
         console.error(err);
         setErrorMessage("既存データの取得に失敗しました。");
@@ -157,6 +159,7 @@ export default function TodayPage() {
       });
       if (!res.ok) throw new Error(await res.text());
       setStatusMessage("保存しました");
+      setCanEditMoods(false);
     } catch (error) {
       console.error(error);
       setErrorMessage("保存に失敗しました。もう一度お試しください。");
@@ -344,6 +347,16 @@ export default function TodayPage() {
                 />
               </div>
 
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setCanEditMoods((prev) => !prev)}
+                  className="text-[0.7rem] font-semibold text-slate-500 underline-offset-2 hover:text-mint-700"
+                >
+                  {canEditMoods ? "スコア編集モード: ON" : "スコアを編集する"}
+                </button>
+              </div>
+
               <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   睡眠
@@ -403,6 +416,7 @@ export default function TodayPage() {
                 helper="起きた直後の体調スコア"
                 value={record.wakeCondition ?? 3}
                 tone="sky"
+                readOnly={!canEditMoods}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -415,6 +429,7 @@ export default function TodayPage() {
                 helper="今日はどれくらい晴れていますか？"
                 value={record.moodMorning ?? 3}
                 tone="mint"
+                readOnly={!canEditMoods}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -427,6 +442,7 @@ export default function TodayPage() {
                 helper="午前中の眠気レベル"
                 value={record.sleepiness ?? 3}
                 tone="rose"
+                readOnly={!canEditMoods}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -552,6 +568,7 @@ export default function TodayPage() {
                 helper="夕方〜夜の状態"
                 value={record.moodEvening ?? 3}
                 tone="indigo"
+                readOnly={!canEditMoods}
                 onChange={(value) =>
                   setRecord((prev) => ({
                     ...prev,
@@ -671,12 +688,14 @@ function MoodRange({
   value,
   onChange,
   tone = "mint",
+  readOnly = false,
 }: {
   title: string;
   helper: string;
   value: number;
   onChange: (value: number) => void;
   tone?: "mint" | "sky" | "indigo" | "violet" | "rose";
+  readOnly?: boolean;
 }) {
   const toneContainer =
     tone === "sky"
@@ -750,8 +769,13 @@ function MoodRange({
         min="0"
         max="5"
         value={value}
+        disabled={readOnly}
         onChange={(event) => onChange(Number(event.target.value))}
-        className={cn("mt-3 w-full", toneAccent)}
+        className={cn(
+          "mt-3 w-full",
+          toneAccent,
+          readOnly && "cursor-default opacity-60"
+        )}
       />
       <div className="mt-1 flex justify-between text-[0.65rem] text-slate-400">
         <span>低い</span>
