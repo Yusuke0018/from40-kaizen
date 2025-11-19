@@ -52,30 +52,30 @@ export function MobileShell({ children }: MobileShellProps) {
   const greeting = getGreeting(now.getHours());
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-6xl xl:max-w-7xl bg-mint-50/95 text-slate-900 md:rounded-[32px] md:border md:border-mint-100/70 md:bg-white/95 md:shadow-2xl md:shadow-slate-900/10 md:backdrop-blur-xl">
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-mint-200/70 via-transparent to-transparent md:h-full md:w-80 md:bg-gradient-to-b md:from-slate-950 md:via-slate-900 md:to-slate-900/90 md:rounded-l-[32px]" />
+    <div className="relative flex min-h-dvh w-full bg-transparent text-slate-900">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-mint-200/60 via-transparent to-transparent md:h-full md:w-80 md:bg-gradient-to-b md:from-mint-200 md:via-sky-100 md:to-sky-50" />
       <div className="relative z-10 flex w-full flex-col md:flex-row">
         {/* サイドレール（PC） */}
-        <aside className="hidden w-80 flex-shrink-0 flex-col justify-between border-r border-white/10 bg-transparent px-8 py-8 text-slate-100 md:flex">
+        <aside className="hidden w-80 flex-shrink-0 flex-col justify-between border-r border-mint-100/80 bg-white/80 px-8 py-8 text-slate-800 shadow-lg shadow-mint-100/60 backdrop-blur md:flex">
           <div>
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-mint-200">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-mint-600">
               40 CHRONICLE
             </p>
-            <h1 className="pt-3 text-2xl font-semibold leading-tight text-white">
+            <h1 className="pt-3 text-2xl font-semibold leading-tight text-slate-900">
               {greeting}
             </h1>
-            <p className="pt-1 text-sm text-mint-100/80">
+            <p className="pt-1 text-sm text-slate-500">
               {date} ({weekday})
             </p>
-            <p className="pt-4 text-xs leading-relaxed text-slate-100/80">
+            <p className="pt-4 text-xs leading-relaxed text-slate-600">
               左のタブで入力し、右側に
-              <span className="font-semibold text-mint-200">結果と履歴</span>
+              <span className="font-semibold text-mint-700">結果と履歴</span>
               が並びます。HRVや感情メモで、日々の変化を丁寧に追いかけましょう。
             </p>
           </div>
           <div className="space-y-3">
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-900/80 px-4 py-2 text-[0.7rem] font-semibold text-mint-200 ring-1 ring-mint-400/40">
-              <CalendarCheck className="h-3.5 w-3.5" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-mint-200 to-sky-200 px-4 py-2 text-[0.7rem] font-semibold text-slate-800 ring-1 ring-mint-300/60">
+              <CalendarCheck className="h-3.5 w-3.5 text-mint-800" />
               実験を続けて、パターンを見つける
             </span>
             <DesktopNav pathname={pathname} />
@@ -83,7 +83,7 @@ export function MobileShell({ children }: MobileShellProps) {
         </aside>
 
         {/* メインコンテンツ */}
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col md:bg-white/90 md:shadow-xl md:shadow-mint-100/60 md:backdrop-blur md:rounded-l-[32px]">
           {/* モバイルヘッダー */}
           <header className="z-10 px-6 pb-2 pt-7 md:hidden">
             <p className="text-[0.65rem] uppercase tracking-[0.32em] text-slate-500">
@@ -174,14 +174,14 @@ function DesktopNav({ pathname }: { pathname: string }) {
             className={cn(
               "flex items-center gap-2 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition",
               active
-                ? "bg-mint-400/20 text-mint-100 ring-1 ring-mint-300/60"
-                : "text-slate-200/80 hover:bg-slate-900/60 hover:text-white"
+                ? "bg-mint-100 text-mint-800 ring-1 ring-mint-300/80"
+                : "text-slate-500 hover:bg-mint-50 hover:text-slate-900"
             )}
           >
             <item.icon
               className={cn(
                 "h-4 w-4",
-                active ? "text-mint-100" : "text-slate-200/80"
+                active ? "text-mint-700" : "text-slate-400"
               )}
             />
             <span>{item.label}</span>

@@ -190,13 +190,13 @@ export default function TodayPage() {
   return (
     <div className="space-y-6 pb-16 md:pb-10" id="record">
       {/* 入力コンテキスト */}
-      <section className="rounded-3xl border border-slate-900/5 bg-slate-950/90 p-5 text-slate-100 shadow-lg shadow-slate-900/40 backdrop-blur md:flex md:items-center md:justify-between md:gap-6">
+      <section className="rounded-3xl border border-mint-100/70 bg-gradient-to-r from-mint-100 via-sky-50 to-white p-5 text-slate-900 shadow-lg shadow-mint-200/40 backdrop-blur md:flex md:items-center md:justify-between md:gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-mint-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-mint-600">
               EXPERIMENT FOCUS
             </p>
-            <h2 className="pt-2 text-2xl font-semibold text-white">
+            <h2 className="pt-2 text-2xl font-semibold text-slate-900">
               生活リズム×栄養カイゼン
             </h2>
           </div>
@@ -206,31 +206,31 @@ export default function TodayPage() {
               value={selectedDate}
               max={todayKey()}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-inner"
+              className="rounded-full border border-mint-200 bg-white/80 px-3 py-2 text-sm text-slate-700 shadow-inner"
             />
             <button
               type="button"
               onClick={() => setSelectedDate(todayKey())}
-              className="text-xs font-semibold text-mint-300"
+              className="text-xs font-semibold text-mint-700"
             >
               今日
             </button>
           </div>
         </div>
-        <p className="mt-3 text-sm text-slate-200">
+        <p className="mt-3 text-sm text-slate-600">
           左側のカードは
-          <span className="font-semibold text-mint-200">「入力エリア」</span>
+          <span className="font-semibold text-mint-700">「入力エリア」</span>
           、下の白いカードは
-          <span className="font-semibold text-sky-200">「結果とログ」</span>
+          <span className="font-semibold text-sky-700">「結果とログ」</span>
           です。朝・夜で分けて、感情やHRVも一緒に記録しましょう。
         </p>
         {statusMessage && (
-          <p className="pt-3 text-sm font-semibold text-mint-300">
+          <p className="pt-3 text-sm font-semibold text-mint-700">
             {statusMessage}
           </p>
         )}
         {errorMessage && (
-          <p className="pt-3 text-sm font-semibold text-red-300">{errorMessage}</p>
+          <p className="pt-3 text-sm font-semibold text-red-500">{errorMessage}</p>
         )}
       </section>
 
