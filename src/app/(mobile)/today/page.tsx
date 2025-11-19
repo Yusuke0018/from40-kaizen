@@ -224,18 +224,6 @@ export default function TodayPage() {
           <span className="font-semibold text-sky-200">「結果とログ」</span>
           です。朝・夜で分けて、感情やHRVも一緒に記録しましょう。
         </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          {["砂糖リセット3週目", "夜スクリーンオフ30分前", "朝の白湯"].map(
-            (item) => (
-              <span
-                key={item}
-                className="rounded-full border border-mint-300/70 bg-slate-900/80 px-3 py-1 font-semibold text-mint-100"
-              >
-                {item}
-              </span>
-            )
-          )}
-        </div>
         {statusMessage && (
           <p className="pt-3 text-sm font-semibold text-mint-300">
             {statusMessage}
