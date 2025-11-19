@@ -657,7 +657,7 @@ function MoodRange({
       </div>
       <input
         type="range"
-        min="1"
+        min="0"
         max="5"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
