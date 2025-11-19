@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
   description:
     "日々の実験とコンディションを整然と記録する、モバイルファーストのライフログアプリ。",
+  themeColor: "#e0f2f1",
+  icons: {
+    icon: "/hibikore-icon.svg",
+    apple: "/hibikore-icon.svg",
+  },
 };
 
 export default function RootLayout({
