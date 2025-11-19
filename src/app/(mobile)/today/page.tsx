@@ -499,32 +499,6 @@ export default function TodayPage() {
                   </p>
                 )}
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field
-                  label="水分量 (ml)"
-                  type="number"
-                  placeholder="1,600"
-                  value={record.hydrationMl ?? ""}
-                  onChange={(value) =>
-                    setRecord((prev) => ({
-                      ...prev,
-                      hydrationMl: value === "" ? null : Number(value),
-                    }))
-                  }
-                />
-                <Field
-                  label="消費カロリー"
-                  type="number"
-                  placeholder="1,850"
-                  value={record.calories ?? ""}
-                  onChange={(value) =>
-                    setRecord((prev) => ({
-                      ...prev,
-                      calories: value === "" ? null : Number(value),
-                    }))
-                  }
-                />
-              </div>
               <Button
                 type="button"
                 onClick={handleAddMeal}
