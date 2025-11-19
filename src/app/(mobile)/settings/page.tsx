@@ -132,7 +132,7 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3">
+          <div className="space-y-3 rounded-lg border-2 border-slate-900 bg-slate-50/60 p-3">
             <label className="block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
                 目標内容
@@ -233,7 +233,7 @@ export default function SettingsPage() {
               {activeGoals.map((goal) => (
                 <div
                   key={goal.id}
-                  className="space-y-1 rounded-lg border border-slate-100 bg-white p-3 text-xs text-slate-700 shadow-[var(--shadow-soft)]"
+                  className="space-y-1 rounded-lg border-2 border-slate-900 bg-white p-3 text-xs text-slate-700 shadow-[var(--shadow-soft)]"
                 >
                   <p className="font-semibold">{goal.text}</p>
                   <p className="text-[0.7rem] text-slate-400">
@@ -280,7 +280,7 @@ function SettingsGroup({
           {title}
         </h3>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[var(--shadow-soft)]">
+      <div className="overflow-hidden rounded-2xl border-2 border-slate-900 bg-white shadow-[var(--shadow-soft)]">
         {children}
       </div>
     </section>

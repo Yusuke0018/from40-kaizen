@@ -247,7 +247,7 @@ export default function TodayPage() {
     <div className="space-y-6 pb-16 md:pb-10" id="record">
       {/* 現在有効な目標 */}
       {goals.length > 0 && (
-        <section className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 shadow-[var(--shadow-soft)]">
+        <section className="rounded-xl border-2 border-slate-900 bg-rose-50/80 p-4 shadow-[var(--shadow-soft)]">
           <p className="text-[0.65rem] font-bold uppercase tracking-widest text-rose-500">
             Current Goals
           </p>
@@ -255,7 +255,7 @@ export default function TodayPage() {
             {goals.map((goal) => (
               <div
                 key={goal.id}
-                className="space-y-1 rounded-lg border border-rose-100 bg-white/90 p-3 text-xs text-rose-900"
+                className="space-y-1 rounded-lg border-2 border-slate-900 bg-white/90 p-3 text-xs text-rose-900"
               >
                 <p className="font-semibold">{goal.text}</p>
                 <p className="text-[0.7rem] text-rose-500">
@@ -372,7 +372,7 @@ export default function TodayPage() {
                   onClick={() => setCanEditMorning((prev) => !prev)}
                   className="text-[0.7rem] font-semibold text-slate-500 underline-offset-2 hover:text-mint-700"
                 >
-                  {canEditMorning ? "朝のスコア編集モード: ON" : "朝のスコアを編集する"}
+                  {canEditMorning ? "編集モード: ON" : "編集"}
                 </button>
               </div>
 
@@ -592,9 +592,7 @@ export default function TodayPage() {
                   onClick={() => setCanEditEvening((prev) => !prev)}
                   className="text-[0.7rem] font-semibold text-slate-500 underline-offset-2 hover:text-mint-700"
                 >
-                  {canEditEvening
-                    ? "夜のスコア編集モード: ON"
-                    : "夜のスコアを編集する"}
+                  {canEditEvening ? "編集モード: ON" : "編集"}
                 </button>
               </div>
               <MoodRange
@@ -754,14 +752,14 @@ function MoodRange({
 }) {
   const toneContainer =
     tone === "sky"
-      ? "border-sky-100"
+      ? "border-2 border-slate-900"
       : tone === "indigo"
-      ? "border-indigo-100"
+      ? "border-2 border-slate-900"
       : tone === "violet"
-      ? "border-violet-100"
+      ? "border-2 border-slate-900"
       : tone === "rose"
-      ? "border-rose-100"
-      : "border-mint-100";
+      ? "border-2 border-slate-900"
+      : "border-2 border-slate-900";
 
   const toneTitle =
     tone === "sky"
@@ -850,14 +848,14 @@ type StatTileProps = {
 function StatTile({ label, value, unit, tone = "mint" }: StatTileProps) {
   const toneClasses =
     tone === "sky"
-      ? "border-sky-100 bg-gradient-to-br from-sky-50 to-white"
+      ? "border-2 border-slate-900 bg-gradient-to-br from-sky-50 to-white"
       : tone === "indigo"
-      ? "border-indigo-100 bg-gradient-to-br from-indigo-50 to-white"
+      ? "border-2 border-slate-900 bg-gradient-to-br from-indigo-50 to-white"
       : tone === "violet"
-      ? "border-violet-100 bg-gradient-to-br from-violet-50 to-white"
+      ? "border-2 border-slate-900 bg-gradient-to-br from-violet-50 to-white"
       : tone === "rose"
-      ? "border-rose-100 bg-gradient-to-br from-rose-50 to-white"
-      : "border-mint-100 bg-gradient-to-br from-mint-50 to-white";
+      ? "border-2 border-slate-900 bg-gradient-to-br from-rose-50 to-white"
+      : "border-2 border-slate-900 bg-gradient-to-br from-mint-50 to-white";
 
   const valueColor =
     tone === "sky"
@@ -873,7 +871,7 @@ function StatTile({ label, value, unit, tone = "mint" }: StatTileProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border p-4 shadow-sm transition-colors",
+        "rounded-xl p-4 shadow-sm transition-colors",
         toneClasses
       )}
     >
@@ -921,7 +919,7 @@ function SectionCard({
       : "border-mint-100 bg-gradient-to-r from-mint-50/80 to-sky-50/80";
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-soft)]">
+    <section className="overflow-hidden rounded-xl border-2 border-slate-900 bg-white shadow-[var(--shadow-soft)]">
       <div className={cn("border-b px-5 py-3", headerAccent)}>
         <div className="flex items-center gap-2">
           {icon && (
