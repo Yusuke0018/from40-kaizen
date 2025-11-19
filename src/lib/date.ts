@@ -1,5 +1,12 @@
-export function todayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+const DEFAULT_TZ = "Asia/Tokyo";
+
+export function todayKey(date: Date = new Date(), timeZone: string = DEFAULT_TZ) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 export function calcSleepHours(date: string, start?: string | null, end?: string | null) {
