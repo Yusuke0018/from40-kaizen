@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { DailyRecord } from "@/types/daily-record";
+import type { Goal } from "@/types/goal";
 import { calcSleepHours, todayKey } from "@/lib/date";
 import { storage } from "@/lib/firebase/client";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
@@ -56,6 +57,8 @@ export default function TodayPage() {
   const [mealTime, setMealTime] = useState("");
   const [mealNote, setMealNote] = useState("");
   const [mealPhotoUrl, setMealPhotoUrl] = useState<string | null>(null);
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goalsError, setGoalsError] = useState<string | null>(null);
 
   const fetchRecord = useCallback(
     async (date: string) => {
@@ -98,10 +101,34 @@ export default function TodayPage() {
     [user, fetchRecord]
   );
 
+  const loadGoals = useCallback(async () => {
+    if (!user) return;
+    setGoalsError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/goals", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to load goals");
+      }
+      const data = (await res.json()) as Goal[];
+      setGoals(data);
+    } catch (error) {
+      console.error(error);
+      setGoalsError("目標の取得に失敗しました。時間をおいて再度お試しください。");
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     void refreshRecord(selectedDate);
   }, [user, selectedDate, refreshRecord]);
+
+  useEffect(() => {
+    if (!user) return;
+    void loadGoals();
+  }, [user, loadGoals]);
 
   const computedSleepHours = useMemo(
     () => calcSleepHours(record.date, record.sleepStart, record.sleepEnd),
@@ -197,6 +224,35 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-6 pb-16 md:pb-10" id="record">
+      {/* 現在有効な目標 */}
+      {goals.length > 0 && (
+        <section className="rounded-xl border border-rose-200 bg-rose-50/80 p-4 shadow-[var(--shadow-soft)]">
+          <p className="text-[0.65rem] font-bold uppercase tracking-widest text-rose-500">
+            Current Goals
+          </p>
+          <div className="mt-2 space-y-2">
+            {goals.map((goal) => (
+              <div
+                key={goal.id}
+                className="space-y-1 rounded-lg border border-rose-100 bg-white/90 p-3 text-xs text-rose-900"
+              >
+                <p className="font-semibold">{goal.text}</p>
+                <p className="text-[0.7rem] text-rose-500">
+                  期間: {formatGoalDate(goal.startDate)} 〜{" "}
+                  {formatGoalDate(goal.endDate)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      {goalsError && (
+        <section className="text-xs">
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 font-semibold text-rose-600">
+            {goalsError}
+          </p>
+        </section>
+      )}
       {/* ヘッダー */}
       <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -851,4 +907,14 @@ function Button({ variant = "primary", className, ...props }: ButtonProps) {
   return (
     <button className={cn(base, variantClass, className)} {...props} />
   );
+}
+
+function formatGoalDate(input: string | null | undefined) {
+  if (!input) return "-";
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return input;
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
 }
