@@ -8,7 +8,7 @@ export const dailyRecordSchema = z.object({
   sleepHours: z.number().nullable().optional(),
   avgSleepHr: z.number().nullable().optional(),
   hrv: z.number().nullable().optional(),
-  wakeCondition: z.string().nullable().optional(),
+  wakeCondition: z.number().nullable().optional(),
   moodMorning: z.number().nullable().optional(),
   moodEvening: z.number().nullable().optional(),
   sleepiness: z.number().nullable().optional(),

@@ -17,7 +17,7 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   sleepHours: null,
   avgSleepHr: null,
   hrv: null,
-  wakeCondition: "",
+  wakeCondition: 3,
   moodMorning: 3,
   moodEvening: 3,
   sleepiness: 3,
@@ -365,19 +365,18 @@ export default function TodayPage() {
                 }))
               }
             />
-            <Field
-              label="起床時の体調"
-              type="text"
-              placeholder="ややだるい"
-              value={record.wakeCondition ?? ""}
-              onChange={(value) =>
-                setRecord((prev) => ({
-                  ...prev,
-                  wakeCondition: value,
-                }))
-              }
-            />
           </div>
+          <MoodRange
+            title="起床時の体調"
+            helper="起きた直後の体調スコア"
+            value={record.wakeCondition ?? 3}
+            onChange={(value) =>
+              setRecord((prev) => ({
+                ...prev,
+                wakeCondition: value,
+              }))
+            }
+          />
           <Field
             label="起床時HRV (ms)"
             type="number"

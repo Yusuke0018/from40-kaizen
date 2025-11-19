@@ -13,7 +13,7 @@ export type DailyRecord = {
   sleepHours: number | null;
   avgSleepHr?: number | null;
   hrv: number | null;
-  wakeCondition: string | null;
+  wakeCondition: number | null;
   moodMorning: number | null;
   moodEvening: number | null;
   sleepiness: number | null;
