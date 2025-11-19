@@ -1,0 +1,8 @@
+timestamp: 20251119-174306
+branch: main
+head: 66122cd22d6e53aa11f12dd6cd5e9a2b34e9f2ff
+lint: ok
+
+changes:
+ src/app/(mobile)/settings/page.tsx | 62 +-------------------------------------
+ 1 file changed, 1 insertion(+), 61 deletions(-)

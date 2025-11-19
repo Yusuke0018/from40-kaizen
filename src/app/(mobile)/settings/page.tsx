@@ -3,30 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
-import {
-  Bell,
-  ChevronRight,
-  Database,
-  FlaskConical,
-  LogOut,
-  User,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const reminders = [
-  {
-    title: "朝のルーティン",
-    time: "06:30",
-    desc: "起床後10分以内に記録を促す",
-    active: true,
-  },
-  {
-    title: "夜の振り返り",
-    time: "21:45",
-    desc: "寝る前の振り返りをリマインド",
-    active: true,
-  },
-] as const;
+import { FlaskConical, LogOut, User } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
@@ -142,27 +119,6 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
-
-      {/* リマインダー */}
-      <SettingsGroup title="Notifications" icon={<Bell className="h-4 w-4" />}>
-        {reminders.map((item, index) => (
-          <div
-            key={item.title}
-            className={cn(
-              "flex items-center justify-between p-4",
-              index !== reminders.length - 1 && "border-b border-slate-100"
-            )}
-          >
-            <div>
-              <p className="text-sm font-bold text-slate-700">{item.title}</p>
-              <p className="mt-0.5 text-xs text-slate-400">{item.desc}</p>
-            </div>
-            <div className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
-              {item.time}
-            </div>
-          </div>
-        ))}
-      </SettingsGroup>
 
       {/* 期間付き目標 */}
       <SettingsGroup title="Goals" icon={<FlaskConical className="h-4 w-4" />}>
@@ -291,21 +247,6 @@ export default function SettingsPage() {
         </div>
       </SettingsGroup>
 
-      {/* 連携予定 */}
-      <SettingsGroup title="Integrations" icon={<Database className="h-4 w-4" />}>
-        <div className="flex cursor-pointer items-center justify-between p-4">
-          <span className="text-sm font-bold text-slate-700">
-            HealthKit Sync
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-300">
-              Coming soon
-            </span>
-            <ChevronRight className="h-4 w-4 text-slate-300" />
-          </div>
-        </div>
-      </SettingsGroup>
-
       <button
         onClick={() => void handleSignOut()}
         disabled={signingOut}
@@ -381,4 +322,3 @@ function formatDate(input: string | undefined | null) {
     day: "numeric",
   }).format(date);
 }
-
