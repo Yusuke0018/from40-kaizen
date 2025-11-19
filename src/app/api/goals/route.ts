@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
-import { goalSchema } from "@/lib/schemas/goal";
+import { goalSchema, type GoalInput } from "@/lib/schemas/goal";
 
 const collectionFor = (uid: string) =>
   getAdminDb().collection("users").doc(uid).collection("goals");
@@ -14,7 +14,10 @@ export async function GET(request: Request) {
     const now = new Date();
 
     const goals = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }))
+      .map((doc) => {
+        const data = doc.data() as GoalInput;
+        return { id: doc.id, ...data };
+      })
       .filter((goal) => {
         const rawExpire = goal.expireAt;
         if (!rawExpire || typeof rawExpire !== "string") return true;
@@ -75,4 +78,3 @@ export async function POST(request: Request) {
     );
   }
 }
-
