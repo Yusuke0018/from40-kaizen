@@ -106,7 +106,8 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 pb-16 md:pb-10">
+      {/* エクスポート設定（入力） */}
       <section className="rounded-3xl border border-mint-100/80 bg-gradient-to-r from-mint-50 to-sky-50 p-5 shadow-inner shadow-mint-100/70">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
           CSV EXPORT
@@ -118,7 +119,7 @@ export default function ExportPage() {
         {error && <p className="pt-3 text-sm text-red-500">{error}</p>}
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-sky-100/80">
+      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-sky-100/80">
         <form
           className="space-y-4 text-sm"
           onSubmit={(event) => {
@@ -179,6 +180,7 @@ export default function ExportPage() {
         </form>
       </section>
 
+      {/* プレビュー（結果の一部確認） */}
       <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-mint-100/70">
         <div className="flex items-center justify-between text-sm">
           <div>

@@ -188,14 +188,15 @@ export default function TodayPage() {
   ];
 
   return (
-    <div className="space-y-6 pb-16" id="record">
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-200/50 backdrop-blur">
+    <div className="space-y-6 pb-16 md:pb-10" id="record">
+      {/* 入力コンテキスト */}
+      <section className="rounded-3xl border border-slate-900/5 bg-slate-950/90 p-5 text-slate-100 shadow-lg shadow-slate-900/40 backdrop-blur md:flex md:items-center md:justify-between md:gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-mint-300">
               EXPERIMENT FOCUS
             </p>
-            <h2 className="pt-2 text-2xl font-semibold text-slate-900">
+            <h2 className="pt-2 text-2xl font-semibold text-white">
               生活リズム×栄養カイゼン
             </h2>
           </div>
@@ -205,26 +206,30 @@ export default function TodayPage() {
               value={selectedDate}
               max={todayKey()}
               onChange={(event) => setSelectedDate(event.target.value)}
-              className="rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-sm text-slate-600 shadow-inner"
+              className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-inner"
             />
             <button
               type="button"
               onClick={() => setSelectedDate(todayKey())}
-              className="text-xs font-semibold text-mint-600"
+              className="text-xs font-semibold text-mint-300"
             >
               今日
             </button>
           </div>
         </div>
-        <p className="mt-2 text-sm text-slate-600">
-          睡眠と血糖コントロールを中心に、刺激物を控えて体調の変化を観察します。
+        <p className="mt-3 text-sm text-slate-200">
+          左側のカードは
+          <span className="font-semibold text-mint-200">「入力エリア」</span>
+          、下の白いカードは
+          <span className="font-semibold text-sky-200">「結果とログ」</span>
+          です。朝・夜で分けて、感情やHRVも一緒に記録しましょう。
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
           {["砂糖リセット3週目", "夜スクリーンオフ30分前", "朝の白湯"].map(
             (item) => (
               <span
                 key={item}
-                className="rounded-full border border-mint-200/80 bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700"
+                className="rounded-full border border-mint-300/70 bg-slate-900/80 px-3 py-1 font-semibold text-mint-100"
               >
                 {item}
               </span>
@@ -232,18 +237,21 @@ export default function TodayPage() {
           )}
         </div>
         {statusMessage && (
-          <p className="pt-3 text-sm font-semibold text-mint-600">
+          <p className="pt-3 text-sm font-semibold text-mint-300">
             {statusMessage}
           </p>
         )}
         {errorMessage && (
-          <p className="pt-3 text-sm font-semibold text-red-500">{errorMessage}</p>
+          <p className="pt-3 text-sm font-semibold text-red-300">{errorMessage}</p>
         )}
       </section>
 
-      <section className="space-y-3">
+      {/* 結果サマリー */}
+      <section className="space-y-3 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)] md:gap-5">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">今日のスナップショット</h3>
+          <h3 className="text-lg font-semibold text-slate-900">
+            今日のスナップショット
+          </h3>
           <button
             className="text-sm font-semibold text-mint-600"
             onClick={() => void refreshRecord(selectedDate)}
@@ -252,16 +260,16 @@ export default function TodayPage() {
             {loading ? "更新中…" : "再読込"}
           </button>
         </div>
-        <div className="grid gap-3">
+        <div className="grid gap-3 md:col-span-2 md:grid-cols-4">
           {quickStats.map((stat) => (
             <div
               key={stat.label}
-              className="rounded-3xl border border-white/80 bg-white/90 p-4 shadow-sm shadow-mint-100/60"
+              className="rounded-3xl border border-slate-900/5 bg-white p-4 shadow-sm shadow-slate-200/70"
             >
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                 {stat.label}
               </p>
-              <p className="mt-2 text-2xl font-semibold text-slate-900">
+              <p className="mt-2 text-2xl font-semibold text-slate-950">
                 {stat.value}
               </p>
               <p className="text-sm text-slate-500">{stat.helper}</p>
@@ -270,6 +278,7 @@ export default function TodayPage() {
         </div>
       </section>
 
+      {/* 入力：朝のチェックイン */}
       <section className="rounded-3xl border border-mint-100/80 bg-gradient-to-br from-mint-50 to-white p-5 shadow-inner shadow-mint-100/60">
         <h3 className="text-lg font-semibold text-slate-900">朝のチェックイン</h3>
         <p className="text-sm text-slate-500">目覚めてすぐに入力する基本データです。</p>
@@ -400,7 +409,8 @@ export default function TodayPage() {
         </form>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-sky-100/80 backdrop-blur">
+      {/* 入力：水分＆食事メモ */}
+      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-sky-100/80 backdrop-blur">
         <div className="flex items-center gap-2">
           <Droplets className="h-5 w-5 text-sky-500" />
           <h3 className="text-lg font-semibold">水分＆食事メモ</h3>
@@ -445,7 +455,7 @@ export default function TodayPage() {
               }
             />
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 text-[0.75rem]">
             <Chip icon={Coffee}>
               カフェイン {record.mealsNote.includes("カフェイン") ? "有り" : "0杯"}
             </Chip>
@@ -496,7 +506,8 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-100/80 backdrop-blur">
+      {/* 入力：夜の振り返り */}
+      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-mint-100/80 backdrop-blur">
         <div className="flex items-center gap-2">
           <Moon className="h-5 w-5 text-mint-500" />
           <div>

@@ -45,8 +45,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 pb-16">
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-200/70">
+    <div className="space-y-6 pb-16 md:pb-10">
+      {/* アカウント */}
+      <section className="rounded-3xl border border-slate-900/5 bg-white/95 p-5 shadow-lg shadow-mint-200/70">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
           SETTINGS
         </p>
@@ -67,6 +68,7 @@ export default function SettingsPage() {
         </button>
       </section>
 
+      {/* リマインダー */}
       <section className="rounded-3xl border border-mint-100/70 bg-mint-50/80 p-5 shadow-inner shadow-mint-100/70">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">リマインダー</h3>
@@ -90,7 +92,8 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-sky-100/70">
+      {/* 実験タグ */}
+      <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-sky-100/70">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold">実験タグ</h3>
@@ -120,6 +123,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* 連携予定 */}
       <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-mint-100/70">
         <h3 className="text-lg font-semibold">データ連携予定</h3>
         <p className="text-sm text-slate-500">

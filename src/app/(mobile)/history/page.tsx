@@ -51,7 +51,8 @@ export default function HistoryPage() {
   const correlations = useMemo(() => buildCorrelations(records), [records]);
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 pb-16 md:pb-10">
+      {/* フィルターとレンジ選択 */}
       <section className="rounded-3xl border border-sky-100/70 bg-gradient-to-r from-sky-50 to-mint-50 p-5 shadow-inner shadow-sky-100/70">
         <div className="flex items-center justify-between">
           <div>
@@ -86,14 +87,15 @@ export default function HistoryPage() {
         {error && <p className="pt-3 text-sm text-red-500">{error}</p>}
       </section>
 
-      <section className="space-y-3">
+      {/* ダイジェスト（上段：結果の要約） */}
+      <section className="space-y-3 md:grid md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)] md:gap-5">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">ダイジェスト</h3>
           <span className="text-xs font-semibold text-mint-600">
             {summary.rangeLabel}
           </span>
         </div>
-        <div className="rounded-3xl border border-white/70 bg-white/90 p-5 shadow-lg shadow-mint-100/70">
+        <div className="rounded-3xl border border-slate-900/5 bg-white p-5 shadow-lg shadow-mint-100/70">
           <p className="text-sm text-slate-500">
             平均睡眠は{" "}
             <strong className="text-mint-700">{summary.avgSleepHours}h</strong>、
@@ -124,6 +126,7 @@ export default function HistoryPage() {
         </div>
       </section>
 
+      {/* タイムライン（下段：日ごとのログ） */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">タイムライン</h3>
