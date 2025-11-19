@@ -1,3 +1,10 @@
+export type MealEntry = {
+  id: string;
+  time: string;
+  note: string;
+  photoUrl?: string | null;
+};
+
 export type DailyRecord = {
   date: string;
   weightKg: number | null;
@@ -14,6 +21,7 @@ export type DailyRecord = {
   calories: number | null;
   steps: number | null;
   mealsNote: string;
+  meals?: MealEntry[];
   emotionNote: string;
   highlight: string;
   challenge: string;

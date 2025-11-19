@@ -16,6 +16,16 @@ export const dailyRecordSchema = z.object({
   calories: z.number().nullable().optional(),
   steps: z.number().nullable().optional(),
   mealsNote: z.string().optional(),
+  meals: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        time: z.string().optional(),
+        note: z.string().optional(),
+        photoUrl: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
   emotionNote: z.string().optional(),
   highlight: z.string().optional(),
   challenge: z.string().optional(),
