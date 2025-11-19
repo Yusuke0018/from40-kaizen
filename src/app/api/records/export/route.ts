@@ -18,6 +18,7 @@ const defaultColumns = [
   "hydrationMl",
   "calories",
   "mealsNote",
+  "meals",
   "emotionNote",
   "highlight",
   "challenge",

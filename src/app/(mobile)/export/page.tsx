@@ -19,6 +19,7 @@ const columnOptions = [
   "hydrationMl",
   "calories",
   "mealsNote",
+  "meals",
   "emotionNote",
   "highlight",
   "challenge",

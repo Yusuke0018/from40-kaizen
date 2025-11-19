@@ -1,14 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import {
-  Activity,
-  Camera,
-  Coffee,
-  Droplets,
-  HeartPulse,
-  Moon,
-} from "lucide-react";
+import { Camera, Droplets, Moon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { DailyRecord } from "@/types/daily-record";
@@ -32,6 +25,7 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   calories: null,
   steps: null,
   mealsNote: "",
+  meals: [],
   emotionNote: "",
   highlight: "",
   challenge: "",
@@ -50,6 +44,9 @@ export default function TodayPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mealTime, setMealTime] = useState("");
+  const [mealNote, setMealNote] = useState("");
+  const [mealPhotoUrl, setMealPhotoUrl] = useState<string | null>(null);
 
   const fetchRecord = useCallback(
     async (date: string) => {
@@ -66,6 +63,7 @@ export default function TodayPage() {
         ...data,
         date,
         photoUrls: data.photoUrls ?? [],
+        meals: (data as DailyRecord).meals ?? [],
       };
     },
     [user]
@@ -172,6 +170,7 @@ export default function TodayPage() {
         ...prev,
         photoUrls: [...prev.photoUrls, url],
       }));
+      setMealPhotoUrl(url);
     } catch (error) {
       console.error(error);
       setUploadError("写真のアップロードに失敗しました。");
@@ -181,11 +180,37 @@ export default function TodayPage() {
     }
   }
 
-  const missions = [
-    { id: 1, title: "22:30就寝チャレンジ", note: "5/7達成", checked: true },
-    { id: 2, title: "13時以降カフェインなし", note: "あと2日", checked: false },
-    { id: 3, title: "朝の散歩10分", note: "天気◎", checked: true },
-  ];
+  function handleAddMeal() {
+    if (!mealNote && !mealPhotoUrl) return;
+    const time =
+      mealTime ||
+      new Date().toTimeString().slice(0, 5); // HH:MM
+    setRecord((prev) => {
+      const prevMeals = prev.meals ?? [];
+      const newMeal = {
+        id: `${Date.now()}-${prevMeals.length}`,
+        time,
+        note: mealNote,
+        photoUrl: mealPhotoUrl,
+      };
+      const nextMeals = [...prevMeals, newMeal];
+      const aggregatedNote = nextMeals
+        .map((meal) =>
+          meal.time ? `[${meal.time}] ${meal.note ?? ""}`.trim() : meal.note
+        )
+        .filter(Boolean)
+        .join(" / ");
+      return {
+        ...prev,
+        meals: nextMeals,
+        mealsNote: aggregatedNote,
+      };
+    });
+    setMealTime("");
+    setMealNote("");
+    setMealPhotoUrl(null);
+    setUploadError(null);
+  }
 
   return (
     <div className="space-y-6 pb-16 md:pb-10" id="record">
@@ -401,93 +426,95 @@ export default function TodayPage() {
       <section className="rounded-3xl border border-white/70 bg-white/95 p-5 shadow-lg shadow-sky-100/80 backdrop-blur">
         <div className="flex items-center gap-2">
           <Droplets className="h-5 w-5 text-sky-500" />
-          <h3 className="text-lg font-semibold">水分＆食事メモ</h3>
+          <h3 className="text-lg font-semibold">今日の食事ログ</h3>
         </div>
-        <p className="text-sm text-slate-500">食事内容や気付きを写真つきで残します。</p>
-        <div className="mt-4 grid gap-3">
-          <Field
-            label="食事メモ"
-            as="textarea"
-            placeholder="例: 朝はオートミールとギリシャヨーグルト、間食なし"
-            value={record.mealsNote}
-            onChange={(value) =>
-              setRecord((prev) => ({
-                ...prev,
-                mealsNote: value,
-              }))
-            }
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
+        <p className="text-sm text-slate-500">
+          摂取時間・メモ・写真をセットで、1日に何回でも追加できます。
+        </p>
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
             <Field
-              label="水分量 (ml)"
-              type="number"
-              placeholder="1,600"
-              value={record.hydrationMl ?? ""}
-              onChange={(value) =>
-                setRecord((prev) => ({
-                  ...prev,
-                  hydrationMl: value === "" ? null : Number(value),
-                }))
-              }
+              label="摂取時間"
+              type="time"
+              value={mealTime}
+              placeholder=""
+              onChange={(value) => setMealTime(value)}
             />
             <Field
-              label="消費カロリー"
-              type="number"
-              placeholder="1,850"
-              value={record.calories ?? ""}
-              onChange={(value) =>
-                setRecord((prev) => ({
-                  ...prev,
-                  calories: value === "" ? null : Number(value),
-                }))
-              }
+              label="食事メモ"
+              as="textarea"
+              placeholder="例: オートミール＋ヨーグルト、間食なし"
+              value={mealNote}
+              onChange={(value) => setMealNote(value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2 text-[0.75rem]">
-            <Chip icon={Coffee}>
-              カフェイン {record.mealsNote.includes("カフェイン") ? "有り" : "0杯"}
-            </Chip>
-            <Chip icon={Activity}>
-              歩数 {record.steps ? record.steps.toLocaleString() : "未入力"}
-            </Chip>
-            <Chip icon={HeartPulse}>
-              HRV {record.hrv != null ? `${record.hrv}ms` : "未入力"}
-            </Chip>
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void handlePhotoUpload(file);
+              }}
+            />
+            <button
+              className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-xs font-semibold text-sky-700 shadow-sm disabled:opacity-60"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+            >
+              <Camera className="h-4 w-4" />
+              {uploading
+                ? "写真アップロード中…"
+                : mealPhotoUrl
+                ? "写真を変更"
+                : "写真を追加"}
+            </button>
+            {mealPhotoUrl && (
+              <span className="text-xs text-slate-500">
+                写真を選択済み（保存すると食事に紐づきます）
+              </span>
+            )}
+            {uploadError && (
+              <p className="text-xs font-semibold text-red-500">{uploadError}</p>
+            )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void handlePhotoUpload(file);
-            }}
-          />
           <button
-            className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-mint-300 bg-mint-50/80 py-4 text-sm font-semibold text-mint-600"
+            className="w-full rounded-full bg-sky-400 py-2.5 text-sm font-semibold text-white shadow-md shadow-sky-200/70 disabled:opacity-60"
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
+            onClick={handleAddMeal}
+            disabled={saving || (mealNote === "" && !mealPhotoUrl)}
           >
-            <Camera className="h-4 w-4" />
-            {uploading ? "アップロード中…" : "食事写真を追加"}
+            食事を追加
           </button>
-          {uploadError && (
-            <p className="text-sm font-semibold text-red-500">{uploadError}</p>
-          )}
-          {record.photoUrls.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {record.photoUrls.map((url) => (
-                <Image
-                  key={url}
-                  src={url}
-                  alt="meal"
-                  width={96}
-                  height={96}
-                  className="h-24 w-24 rounded-2xl object-cover shadow"
-                />
+          {(record.meals ?? []).length > 0 && (
+            <div className="mt-3 space-y-2">
+              {(record.meals ?? []).map((meal) => (
+                <div
+                  key={meal.id}
+                  className="flex gap-3 rounded-2xl border border-slate-100/80 bg-slate-50/80 p-3 text-xs text-slate-700"
+                >
+                  {meal.photoUrl && (
+                    <Image
+                      src={meal.photoUrl}
+                      alt={meal.note || "meal"}
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 flex-shrink-0 rounded-xl object-cover shadow-sm"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      {meal.time || "時間未入力"}
+                    </p>
+                    <p className="mt-1 text-xs whitespace-pre-line">
+                      {meal.note || "メモなし"}
+                    </p>
+                  </div>
+                </div>
               ))}
             </div>
           )}
@@ -562,37 +589,6 @@ export default function TodayPage() {
         </div>
       </section>
 
-      <section className="rounded-3xl border border-sky-100/70 bg-gradient-to-br from-sky-50 to-white p-5 shadow-inner shadow-sky-100/60">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">週間ミッション</h3>
-            <p className="text-sm text-slate-500">ルーティン強化のための小さな約束。</p>
-          </div>
-          <button className="text-xs font-semibold text-sky-600" type="button">
-            編集する
-          </button>
-        </div>
-        <div className="mt-4 space-y-3">
-          {missions.map((mission) => (
-            <label
-              key={mission.id}
-              className="flex items-center gap-3 rounded-2xl border border-slate-100/80 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm"
-            >
-              <input
-                type="checkbox"
-                defaultChecked={mission.checked}
-                className="h-5 w-5 rounded-full border-mint-400 text-mint-500"
-              />
-              <div>
-                <p>{mission.title}</p>
-                <span className="text-xs font-medium text-slate-400">
-                  {mission.note}
-                </span>
-              </div>
-            </label>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
@@ -661,7 +657,7 @@ function MoodRange({
       </div>
       <input
         type="range"
-        min="1"
+        min="0"
         max="5"
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
@@ -672,20 +668,5 @@ function MoodRange({
         <span>高い</span>
       </div>
     </div>
-  );
-}
-
-function Chip({
-  children,
-  icon: Icon,
-}: {
-  children: React.ReactNode;
-  icon: React.ComponentType<{ className?: string }>;
-}) {
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-mint-100/80 px-3 py-1 text-xs font-medium text-mint-700">
-      <Icon className="h-4 w-4" />
-      {children}
-    </span>
   );
 }
