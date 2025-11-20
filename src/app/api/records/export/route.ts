@@ -65,20 +65,40 @@ function buildCsv(columns: string[], rows: Record<string, unknown>[]) {
   const header = columns.map((col) => toSnakeCase(col)).join(",");
   const lines = rows.map((row) =>
     columns
-      .map((col) => formatValue((row as Record<string, unknown>)[col]))
+      .map((col) => formatValue(col, (row as Record<string, unknown>)[col]))
       .join(",")
   );
   return [header, ...lines].join("\n");
 }
 
-function formatValue(value: unknown) {
-  if (Array.isArray(value)) {
-    return escapeCsv(value.join("|"));
-  }
+function formatValue(column: string, value: unknown) {
   if (value === null || value === undefined) return "";
+
+  if (Array.isArray(value)) {
+    if (column === "meals" && isMealList(value)) {
+      const meals = value.map((meal) =>
+        [
+          meal.time ? `[${meal.time}]` : null,
+          meal.note ?? "",
+          meal.photoUrl ? meal.photoUrl : null,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+      return escapeCsv(meals.join("|"));
+    }
+
+    if (value.every((item) => typeof item === "string" || typeof item === "number")) {
+      return escapeCsv(value.join("|"));
+    }
+
+    return escapeCsv(JSON.stringify(value));
+  }
+
   if (typeof value === "object") {
     return escapeCsv(JSON.stringify(value));
   }
+
   return escapeCsv(String(value));
 }
 
@@ -97,4 +117,19 @@ function daysAgo(toDate: string, days: number) {
   const date = new Date(toDate);
   date.setDate(date.getDate() - days);
   return date.toISOString().slice(0, 10);
+}
+
+type MealValue = {
+  time?: string;
+  note?: string;
+  photoUrl?: string;
+};
+
+function isMealList(value: unknown[]): value is MealValue[] {
+  return value.every(
+    (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      ("time" in item || "note" in item || "photoUrl" in item)
+  );
 }

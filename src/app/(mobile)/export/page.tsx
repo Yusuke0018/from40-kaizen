@@ -24,7 +24,28 @@ const columnOptions = [
   "highlight",
   "challenge",
   "photoUrls",
-];
+] as const;
+
+const columnLabels: Record<(typeof columnOptions)[number], string> = {
+  date: "date (日付)",
+  weightKg: "weightKg (体重)",
+  sleepStart: "sleepStart (就寝)",
+  sleepEnd: "sleepEnd (起床)",
+  sleepHours: "sleepHours (睡眠時間h)",
+  avgSleepHr: "avgSleepHr (睡眠HR)",
+  hrv: "hrv (HRV)",
+  moodMorning: "moodMorning (朝気分)",
+  moodEvening: "moodEvening (夜気分)",
+  steps: "steps (歩数)",
+  hydrationMl: "hydrationMl (水分ml)",
+  calories: "calories (kcal)",
+  mealsNote: "mealsNote (食事メモ)",
+  meals: "meals (食事詳細＆写真URL)",
+  emotionNote: "emotionNote (感情メモ)",
+  highlight: "highlight (ハイライト)",
+  challenge: "challenge (課題)",
+  photoUrls: "photoUrls (写真URL一覧)",
+};
 
 export default function ExportPage() {
   const { user } = useAuthContext();
@@ -38,6 +59,8 @@ export default function ExportPage() {
     "sleepHours",
     "moodMorning",
     "hrv",
+    "meals",
+    "photoUrls",
   ]);
   const [preview, setPreview] = useState<DailyRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -165,7 +188,7 @@ export default function ExportPage() {
                     className="h-4 w-4 rounded border-mint-400 text-mint-500"
                   />
                   <span className="text-xs font-medium text-slate-600">
-                    {field}
+                    {columnLabels[field]}
                   </span>
                 </label>
               ))}
