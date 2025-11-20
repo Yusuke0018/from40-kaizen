@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Camera, Droplets, Moon } from "lucide-react";
+import { Droplets, ImagePlus, Moon } from "lucide-react";
 import {
   type ButtonHTMLAttributes,
   type ReactNode,
@@ -507,7 +507,6 @@ export default function TodayPage() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
-                  capture="environment"
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0];
@@ -520,12 +519,12 @@ export default function TodayPage() {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
                 >
-                  <Camera className="h-4 w-4" />
+                  <ImagePlus className="h-4 w-4" />
                   {uploading
                     ? "写真アップロード中…"
                     : mealPhotoUrl
                     ? "写真を変更"
-                    : "写真を追加"}
+                    : "ギャラリーから写真を選択"}
                 </button>
                 {mealPhotoUrl && (
                   <span className="text-xs text-slate-500">
