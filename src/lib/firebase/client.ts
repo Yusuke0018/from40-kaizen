@@ -13,9 +13,33 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+const requiredKeys: Array<keyof typeof firebaseConfig> = [
+  "apiKey",
+  "authDomain",
+  "projectId",
+  "storageBucket",
+  "appId",
+];
+
+const missing = requiredKeys.filter((key) => !firebaseConfig[key]);
+if (missing.length > 0) {
+  throw new Error(
+    `Firebase の環境変数が不足しています: ${missing.join(
+      ", "
+    )} を .env.local に設定してください。`
+  );
+}
+
+const normalizedBucket = firebaseConfig.storageBucket!.replace(/^gs:\/\//, "");
+const app =
+  getApps().length > 0
+    ? getApp()
+    : initializeApp({
+        ...firebaseConfig,
+        storageBucket: normalizedBucket,
+      });
 
 export const firebaseApp = app;
 export const firebaseAuth = getAuth(app);
 export const firestore = getFirestore(app);
-export const storage = getStorage(app);
+export const storage = getStorage(app, `gs://${normalizedBucket}`);

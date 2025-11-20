@@ -1,0 +1,11 @@
+timestamp: 20251120-114345
+branch: main
+head: 4f0354c66164ceb298bd02b7972a2d7159379dd7
+lint: ok
+test: not-run (no test suite)
+push: planned
+
+changes:
+ .env.example               |  2 +-
+ src/lib/firebase/client.ts | 36 +++++++++++++++++++++++++++++++-----
+ 2 files changed, 32 insertions(+), 6 deletions(-)
