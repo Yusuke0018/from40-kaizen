@@ -16,7 +16,12 @@ import type { DailyRecord } from "@/types/daily-record";
 import type { Goal } from "@/types/goal";
 import { calcSleepHours, todayKey } from "@/lib/date";
 import { storage } from "@/lib/firebase/client";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import {
+  getDownloadURL,
+  ref,
+  uploadBytesResumable,
+  UploadTaskSnapshot,
+} from "firebase/storage";
 import { cn } from "@/lib/utils";
 
 const createEmptyRecord = (date: string): DailyRecord => ({
@@ -195,7 +200,26 @@ export default function TodayPage() {
         storage,
         `users/${user.uid}/photos/${selectedDate}/${Date.now()}-${file.name}`
       );
-      const snapshot = await uploadBytes(storageRef, file);
+      const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
+        const uploadTask = uploadBytesResumable(storageRef, file);
+        const timeoutId = window.setTimeout(() => {
+          uploadTask.cancel();
+          reject(new Error("アップロードがタイムアウトしました。"));
+        }, 45_000);
+
+        uploadTask.on(
+          "state_changed",
+          undefined,
+          (error) => {
+            clearTimeout(timeoutId);
+            reject(error);
+          },
+          () => {
+            clearTimeout(timeoutId);
+            resolve(uploadTask.snapshot);
+          }
+        );
+      });
       const url = await getDownloadURL(snapshot.ref);
       setRecord((prev) => ({
         ...prev,
@@ -204,7 +228,9 @@ export default function TodayPage() {
       setMealPhotoUrl(url);
     } catch (error) {
       console.error(error);
-      setUploadError("写真のアップロードに失敗しました。");
+      setUploadError(
+        "写真のアップロードに失敗しました。通信環境を確認して再試行してください。"
+      );
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
