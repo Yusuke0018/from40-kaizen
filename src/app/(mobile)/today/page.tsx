@@ -202,11 +202,13 @@ export default function TodayPage() {
     setUploading(true);
     setUploadProgress(0);
     setUploadError(null);
+    let storageBucket = "(bucket不明)";
     try {
       const storageRef = ref(
         storage,
         `users/${user.uid}/photos/${selectedDate}/${Date.now()}-${file.name}`
       );
+      storageBucket = storageRef.bucket;
       const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
         const uploadTask = uploadBytesResumable(storageRef, file);
         const timeoutId = window.setTimeout(() => {
@@ -242,7 +244,7 @@ export default function TodayPage() {
       console.error(error);
       setUploadError(describeUploadError(error, {
         origin: window.location.origin,
-        bucket: storageRef.bucket,
+        bucket: storageBucket,
       }));
     } finally {
       setUploading(false);
