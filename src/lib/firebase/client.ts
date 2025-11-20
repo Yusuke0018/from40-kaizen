@@ -13,15 +13,27 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
+function inferProjectIdFromBucket(bucket?: string | null) {
+  if (!bucket) return null;
+  const sanitized = bucket.replace(/^gs:\/\//, "");
+  const match = sanitized.match(/^([a-z0-9-]+)\.appspot\.com$/);
+  if (match) return match[1];
+  return sanitized.split(".")[0] ?? null;
+}
+
+const normalizedBucket = firebaseConfig.storageBucket?.replace(/^gs:\/\//, "");
+const inferredProjectId =
+  firebaseConfig.projectId ?? inferProjectIdFromBucket(normalizedBucket);
+
 const requiredKeys: Array<keyof typeof firebaseConfig> = [
   "apiKey",
   "authDomain",
-  "projectId",
   "storageBucket",
   "appId",
 ];
 
 const missing = requiredKeys.filter((key) => !firebaseConfig[key]);
+const projectIdMissing = !inferredProjectId;
 if (missing.length > 0) {
   throw new Error(
     `Firebase の環境変数が不足しています: ${missing.join(
@@ -30,12 +42,18 @@ if (missing.length > 0) {
   );
 }
 
-const normalizedBucket = firebaseConfig.storageBucket!.replace(/^gs:\/\//, "");
+if (projectIdMissing) {
+  throw new Error(
+    "Firebase の環境変数が不足しています: projectId を .env.local に設定してください。"
+  );
+}
+
 const app =
   getApps().length > 0
     ? getApp()
     : initializeApp({
         ...firebaseConfig,
+        projectId: inferredProjectId,
         storageBucket: normalizedBucket,
       });
 

@@ -1,0 +1,10 @@
+timestamp: 20251120-122250
+branch: main
+head: d487443c0c8becd97aeea5d2af05ee4814a0282e
+lint: ok
+test: not-run (no test suite)
+push: planned
+
+changes:
+ src/lib/firebase/client.ts | 22 +++++++++++++++++-----
+ 1 file changed, 17 insertions(+), 5 deletions(-)
