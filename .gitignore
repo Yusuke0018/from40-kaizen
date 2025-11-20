@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local caches (outside project)
+Library/
+Library/Caches/
+Library/Caches/Google/
+Library/Caches/Google/Chrome/
