@@ -445,6 +445,13 @@ export default function TodayPage() {
               <p className="text-[0.75rem] text-slate-500">
                 ChatGPT などの診断結果を貼っておく欄です。保存すると他の記録と同じく Firestore に残ります。
               </p>
+              <Button
+                type="button"
+                onClick={() => void saveRecord()}
+                disabled={saving}
+              >
+                {saving ? "保存中…" : "AIメモを保存"}
+              </Button>
             </div>
           </SectionCard>
         </div>

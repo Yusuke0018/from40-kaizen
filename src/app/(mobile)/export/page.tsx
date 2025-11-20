@@ -18,6 +18,7 @@ const columnOptions = [
   "steps",
   "hydrationMl",
   "calories",
+  "journal",
   "mealsNote",
   "meals",
   "emotionNote",
@@ -39,6 +40,7 @@ const columnLabels: Record<(typeof columnOptions)[number], string> = {
   steps: "steps (歩数)",
   hydrationMl: "hydrationMl (水分ml)",
   calories: "calories (kcal)",
+  journal: "journal (AI評価メモ)",
   mealsNote: "mealsNote (食事メモ)",
   meals: "meals (食事詳細＆写真URL)",
   emotionNote: "emotionNote (感情メモ)",
@@ -61,6 +63,8 @@ export default function ExportPage() {
     "hrv",
     "meals",
     "photoUrls",
+    "journal",
+    "calories",
   ]);
   const [preview, setPreview] = useState<DailyRecord[]>([]);
   const [loading, setLoading] = useState(false);
