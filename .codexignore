@@ -1,0 +1,6 @@
+# Exclude large local caches from Codex snapshots
+Library/
+Library/Caches/
+Library/Caches/Google/
+Library/Containers/
+Library/Application Support/

@@ -1,0 +1,11 @@
+timestamp: 20251120-120150
+branch: main
+head: d1ea712e8d62cb35b8b814d8309b8d089749eaa7
+lint: ok
+test: not-run (no test suite)
+push: planned
+
+changes:
+ src/app/layout.tsx | 5 ++++-
+ .codexignore       | 5 +++++
+ 2 files changed, 9 insertions(+), 1 deletion(-)

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/providers/app-providers";
@@ -22,11 +22,14 @@ export const metadata: Metadata = {
   },
   description:
     "日々の実験とコンディションを整然と記録する、モバイルファーストのライフログアプリ。",
-  themeColor: "#e0f2f1",
   icons: {
     icon: "/hibikore-icon.svg",
     apple: "/hibikore-icon.svg",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#e0f2f1",
 };
 
 export default function RootLayout({
