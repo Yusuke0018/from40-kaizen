@@ -240,13 +240,10 @@ export default function TodayPage() {
       setUploadProgress(null);
     } catch (error) {
       console.error(error);
-      const firebaseCode =
-        error instanceof FirebaseError ? ` (${error.code ?? "firebase-error"})` : "";
-      const message =
-        error instanceof Error
-          ? error.message
-          : "写真のアップロードに失敗しました。通信環境を確認して再試行してください。";
-      setUploadError(`写真のアップロードに失敗しました${firebaseCode}: ${message}`);
+      setUploadError(describeUploadError(error, {
+        origin: window.location.origin,
+        bucket: storageRef.bucket,
+      }));
     } finally {
       setUploading(false);
       setUploadProgress(null);
@@ -893,6 +890,32 @@ type StatTileProps = {
   unit?: string;
   tone?: "mint" | "sky" | "indigo" | "violet" | "rose";
 };
+
+function describeUploadError(
+  error: unknown,
+  context: { origin: string; bucket: string }
+): string {
+  if (error instanceof FirebaseError) {
+    const code = error.code ?? "firebase-error";
+    // 代表的な CORS / 認可エラーを明示
+    if (code === "storage/unauthorized") {
+      return `ストレージが許可していません (${code}). Firebase Authentication でログイン済みか、Storage ルールが user の UID を許可する設定かを確認してください。`;
+    }
+    if (code === "storage/canceled") {
+      return "アップロードがキャンセルされました。通信を確認して再度お試しください。";
+    }
+    if (code === "storage/unknown") {
+      return `ストレージへの接続に失敗しました (${code}). Origin: ${context.origin} / Bucket: ${context.bucket} が Firebase の許可ドメインに含まれているか確認してください。`;
+    }
+    return `アップロードに失敗しました (${code}): ${error.message}`;
+  }
+
+  if (error instanceof Error) {
+    return `アップロードに失敗しました: ${error.message}`;
+  }
+
+  return "アップロードに失敗しました。通信環境と Firebase 設定を確認してください。";
+}
 
 function StatTile({ label, value, unit, tone = "mint" }: StatTileProps) {
   const toneClasses =
