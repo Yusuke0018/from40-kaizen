@@ -22,6 +22,7 @@ import {
   uploadBytesResumable,
   UploadTaskSnapshot,
 } from "firebase/storage";
+import { FirebaseError } from "firebase/app";
 import { cn } from "@/lib/utils";
 
 const createEmptyRecord = (date: string): DailyRecord => ({
@@ -57,6 +58,7 @@ export default function TodayPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mealTime, setMealTime] = useState("");
@@ -193,7 +195,12 @@ export default function TodayPage() {
 
   async function handlePhotoUpload(file: File) {
     if (!user) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("10MB 以下の画像を選択してください。");
+      return;
+    }
     setUploading(true);
+    setUploadProgress(0);
     setUploadError(null);
     try {
       const storageRef = ref(
@@ -205,11 +212,15 @@ export default function TodayPage() {
         const timeoutId = window.setTimeout(() => {
           uploadTask.cancel();
           reject(new Error("アップロードがタイムアウトしました。"));
-        }, 45_000);
+        }, 90_000);
 
         uploadTask.on(
           "state_changed",
-          undefined,
+          (snapshotProgress) => {
+            const percent =
+              (snapshotProgress.bytesTransferred / snapshotProgress.totalBytes) * 100;
+            setUploadProgress(Number(percent.toFixed(0)));
+          },
           (error) => {
             clearTimeout(timeoutId);
             reject(error);
@@ -226,13 +237,19 @@ export default function TodayPage() {
         photoUrls: [...prev.photoUrls, url],
       }));
       setMealPhotoUrl(url);
+      setUploadProgress(null);
     } catch (error) {
       console.error(error);
-      setUploadError(
-        "写真のアップロードに失敗しました。通信環境を確認して再試行してください。"
-      );
+      const firebaseCode =
+        error instanceof FirebaseError ? ` (${error.code ?? "firebase-error"})` : "";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "写真のアップロードに失敗しました。通信環境を確認して再試行してください。";
+      setUploadError(`写真のアップロードに失敗しました${firebaseCode}: ${message}`);
     } finally {
       setUploading(false);
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
@@ -547,7 +564,9 @@ export default function TodayPage() {
                 >
                   <ImagePlus className="h-4 w-4" />
                   {uploading
-                    ? "写真アップロード中…"
+                    ? `写真アップロード中…${
+                        uploadProgress !== null ? ` (${uploadProgress}%)` : ""
+                      }`
                     : mealPhotoUrl
                     ? "写真を変更"
                     : "ギャラリーから写真を選択"}
@@ -556,6 +575,11 @@ export default function TodayPage() {
                   <span className="text-xs text-slate-500">
                     写真を選択済み（保存すると食事に紐づきます）
                   </span>
+                )}
+                {uploadProgress !== null && uploading && (
+                  <p className="text-xs font-semibold text-slate-500">
+                    アップロード進捗: {uploadProgress}%
+                  </p>
                 )}
                 {uploadError && (
                   <p className="text-xs font-semibold text-red-500">
