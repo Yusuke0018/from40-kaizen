@@ -1,28 +1,18 @@
 "use client";
 
-import Image from "next/image";
-import { Droplets, ImagePlus, Moon } from "lucide-react";
+import { Moon } from "lucide-react";
 import {
   type ButtonHTMLAttributes,
   type ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { DailyRecord } from "@/types/daily-record";
 import type { Goal } from "@/types/goal";
 import { calcSleepHours, todayKey } from "@/lib/date";
-import { storage } from "@/lib/firebase/client";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytesResumable,
-  UploadTaskSnapshot,
-} from "firebase/storage";
-import { FirebaseError } from "firebase/app";
 import { cn } from "@/lib/utils";
 
 const createEmptyRecord = (date: string): DailyRecord => ({
@@ -57,13 +47,6 @@ export default function TodayPage() {
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mealTime, setMealTime] = useState("");
-  const [mealNote, setMealNote] = useState("");
-  const [mealPhotoUrl, setMealPhotoUrl] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsError, setGoalsError] = useState<string | null>(null);
   const [canEditMorning, setCanEditMorning] = useState(true);
@@ -191,98 +174,6 @@ export default function TodayPage() {
     if (ok) {
       setCanEditEvening(false);
     }
-  }
-
-  async function handlePhotoUpload(file: File) {
-    if (!user) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("10MB 以下の画像を選択してください。");
-      return;
-    }
-    setUploading(true);
-    setUploadProgress(0);
-    setUploadError(null);
-    let storageBucket = "(bucket不明)";
-    try {
-      const storageRef = ref(
-        storage,
-        `users/${user.uid}/photos/${selectedDate}/${Date.now()}-${file.name}`
-      );
-      storageBucket = storageRef.bucket;
-      const snapshot = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
-        const uploadTask = uploadBytesResumable(storageRef, file);
-        const timeoutId = window.setTimeout(() => {
-          uploadTask.cancel();
-          reject(new Error("アップロードがタイムアウトしました。"));
-        }, 90_000);
-
-        uploadTask.on(
-          "state_changed",
-          (snapshotProgress) => {
-            const percent =
-              (snapshotProgress.bytesTransferred / snapshotProgress.totalBytes) * 100;
-            setUploadProgress(Number(percent.toFixed(0)));
-          },
-          (error) => {
-            clearTimeout(timeoutId);
-            reject(error);
-          },
-          () => {
-            clearTimeout(timeoutId);
-            resolve(uploadTask.snapshot);
-          }
-        );
-      });
-      const url = await getDownloadURL(snapshot.ref);
-      setRecord((prev) => ({
-        ...prev,
-        photoUrls: [...prev.photoUrls, url],
-      }));
-      setMealPhotoUrl(url);
-      setUploadProgress(null);
-    } catch (error) {
-      console.error(error);
-      setUploadError(describeUploadError(error, {
-        origin: window.location.origin,
-        bucket: storageBucket,
-      }));
-    } finally {
-      setUploading(false);
-      setUploadProgress(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  }
-
-  function handleAddMeal() {
-    if (!mealNote && !mealPhotoUrl) return;
-    const time =
-      mealTime ||
-      new Date().toTimeString().slice(0, 5); // HH:MM
-    setRecord((prev) => {
-      const prevMeals = prev.meals ?? [];
-      const newMeal = {
-        id: `${Date.now()}-${prevMeals.length}`,
-        time,
-        note: mealNote,
-        photoUrl: mealPhotoUrl,
-      };
-      const nextMeals = [...prevMeals, newMeal];
-      const aggregatedNote = nextMeals
-        .map((meal) =>
-          meal.time ? `[${meal.time}] ${meal.note ?? ""}`.trim() : meal.note
-        )
-        .filter(Boolean)
-        .join(" / ");
-      return {
-        ...prev,
-        meals: nextMeals,
-        mealsNote: aggregatedNote,
-      };
-    });
-    setMealTime("");
-    setMealNote("");
-    setMealPhotoUrl(null);
-    setUploadError(null);
   }
 
   return (
@@ -522,105 +413,38 @@ export default function TodayPage() {
           </SectionCard>
 
           <SectionCard
-            title="Nutrition"
-            description="摂取時間・メモ・写真で食事を記録します。"
-            icon={<Droplets className="h-4 w-4 text-sky-500" />}
+            title="AIカロリー・評価メモ"
+            description="ChatGPT などで算出した結果を控えておきます。"
             accent="amber"
           >
             <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
-                <Field
-                  label="摂取時間"
-                  type="time"
-                  value={mealTime}
-                  placeholder=""
-                  onChange={(value) => setMealTime(value)}
-                />
-                <Field
-                  label="食事メモ"
-                  as="textarea"
-                  placeholder="例: オートミール＋ヨーグルト、間食なし"
-                  value={mealNote}
-                  onChange={(value) => setMealNote(value)}
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) void handlePhotoUpload(file);
-                  }}
-                />
-                <button
-                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60"
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                >
-                  <ImagePlus className="h-4 w-4" />
-                  {uploading
-                    ? `写真アップロード中…${
-                        uploadProgress !== null ? ` (${uploadProgress}%)` : ""
-                      }`
-                    : mealPhotoUrl
-                    ? "写真を変更"
-                    : "ギャラリーから写真を選択"}
-                </button>
-                {mealPhotoUrl && (
-                  <span className="text-xs text-slate-500">
-                    写真を選択済み（保存すると食事に紐づきます）
-                  </span>
-                )}
-                {uploadProgress !== null && uploading && (
-                  <p className="text-xs font-semibold text-slate-500">
-                    アップロード進捗: {uploadProgress}%
-                  </p>
-                )}
-                {uploadError && (
-                  <p className="text-xs font-semibold text-red-500">
-                    {uploadError}
-                  </p>
-                )}
-              </div>
-              <Button
-                type="button"
-                onClick={handleAddMeal}
-                disabled={saving || (mealNote === "" && !mealPhotoUrl)}
-              >
-                食事を追加
-              </Button>
-              {(record.meals ?? []).length > 0 && (
-                <div className="mt-2 space-y-2">
-                  {(record.meals ?? []).map((meal) => (
-                    <div
-                      key={meal.id}
-                      className="flex gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700"
-                    >
-                      {meal.photoUrl && (
-                        <Image
-                          src={meal.photoUrl}
-                          alt={meal.note || "meal"}
-                          width={64}
-                          height={64}
-                          className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
-                        />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                          {meal.time || "時間未入力"}
-                        </p>
-                        <p className="mt-1 whitespace-pre-line text-xs">
-                          {meal.note || "メモなし"}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Field
+                label="AI算出カロリー (kcal)"
+                type="number"
+                placeholder="例: 1850"
+                value={record.calories ?? ""}
+                onChange={(value) =>
+                  setRecord((prev) => ({
+                    ...prev,
+                    calories: value === "" ? null : Number(value),
+                  }))
+                }
+              />
+              <Field
+                label="AI評価メモ"
+                as="textarea"
+                placeholder="例: タンパク質不足 / 炭水化物過多、改善案など"
+                value={record.journal}
+                onChange={(value) =>
+                  setRecord((prev) => ({
+                    ...prev,
+                    journal: value,
+                  }))
+                }
+              />
+              <p className="text-[0.75rem] text-slate-500">
+                ChatGPT などの診断結果を貼っておく欄です。保存すると他の記録と同じく Firestore に残ります。
+              </p>
             </div>
           </SectionCard>
         </div>
@@ -893,31 +717,7 @@ type StatTileProps = {
   tone?: "mint" | "sky" | "indigo" | "violet" | "rose";
 };
 
-function describeUploadError(
-  error: unknown,
-  context: { origin: string; bucket: string }
-): string {
-  if (error instanceof FirebaseError) {
-    const code = error.code ?? "firebase-error";
-    // 代表的な CORS / 認可エラーを明示
-    if (code === "storage/unauthorized") {
-      return `ストレージが許可していません (${code}). Firebase Authentication でログイン済みか、Storage ルールが user の UID を許可する設定かを確認してください。`;
-    }
-    if (code === "storage/canceled") {
-      return "アップロードがキャンセルされました。通信を確認して再度お試しください。";
-    }
-    if (code === "storage/unknown") {
-      return `ストレージへの接続に失敗しました (${code}). Origin: ${context.origin} / Bucket: ${context.bucket} が Firebase の許可ドメインに含まれているか確認してください。`;
-    }
-    return `アップロードに失敗しました (${code}): ${error.message}`;
-  }
-
-  if (error instanceof Error) {
-    return `アップロードに失敗しました: ${error.message}`;
-  }
-
-  return "アップロードに失敗しました。通信環境と Firebase 設定を確認してください。";
-}
+// 以前のアップロードUIを除去したため、関連ヘルパーは不要になりました。
 
 function StatTile({ label, value, unit, tone = "mint" }: StatTileProps) {
   const toneClasses =
