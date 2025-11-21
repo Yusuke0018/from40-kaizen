@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
-import { FlaskConical, LogOut, User } from "lucide-react";
+import { Dumbbell, LogOut, Pencil, Trash2, User } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [goalStartDate, setGoalStartDate] = useState(isoToday());
   const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(89)); // 90日習慣
   const [savingGoal, setSavingGoal] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
   const activeGoals = useMemo(
     () => goals.filter((goal) => !goal.isHallOfFame),
@@ -54,10 +55,10 @@ export default function SettingsPage() {
     void loadGoals();
   }, [user, loadGoals]);
 
-  async function handleCreateGoal() {
+  async function handleSaveHabit() {
     if (!user) return;
     if (!goalText.trim()) return;
-    if (activeGoals.length >= 2) {
+    if (!editingGoalId && activeGoals.length >= 2) {
       setGoalError("習慣は最大2つまでです。1つ完了させてから追加してください。");
       return;
     }
@@ -66,36 +67,79 @@ export default function SettingsPage() {
     setGoalError(null);
     try {
       const token = await user.getIdToken();
+      const method = editingGoalId ? "PUT" : "POST";
+      const body = editingGoalId
+        ? {
+            id: editingGoalId,
+            text: goalText.trim(),
+            startDate: goalStartDate,
+            endDate: goalEndDate,
+          }
+        : {
+            text: goalText.trim(),
+            startDate: goalStartDate,
+            endDate: goalEndDate,
+          };
+
       const res = await fetch("/api/goals", {
-        method: "POST",
+        method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          text: goalText.trim(),
-          startDate: goalStartDate,
-          endDate: goalEndDate,
-        }),
+        body: JSON.stringify(body),
       });
+
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as
           | { error?: string }
           | null;
-        throw new Error(data?.error ?? "Failed to save goal");
+        throw new Error(data?.error ?? "Failed to save habit");
       }
-      setGoalText("");
-      setGoalStartDate(isoToday());
-      setGoalEndDate(isoTodayPlusDays(89));
+      resetForm();
       await loadGoals();
     } catch (error) {
       console.error(error);
-      setGoalError(
-        "目標の保存に失敗しました。入力内容と期間を確認してください。"
-      );
+      setGoalError("習慣の保存に失敗しました。入力内容と期間を確認してください。");
     } finally {
       setSavingGoal(false);
     }
+  }
+
+  async function handleDeleteHabit(goalId: string) {
+    if (!user) return;
+    setGoalError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/goals?id=${goalId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete habit");
+      }
+      if (editingGoalId === goalId) {
+        resetForm();
+      }
+      await loadGoals();
+    } catch (error) {
+      console.error(error);
+      setGoalError("習慣の削除に失敗しました。");
+    }
+  }
+
+  function startEdit(goal: Goal) {
+    setEditingGoalId(goal.id);
+    setGoalText(goal.text);
+    setGoalStartDate(goal.startDate);
+    setGoalEndDate(goal.endDate);
+  }
+
+  function resetForm() {
+    setEditingGoalId(null);
+    setGoalText("");
+    setGoalStartDate(isoToday());
+    setGoalEndDate(isoTodayPlusDays(89));
   }
 
   async function handleSignOut() {
@@ -214,12 +258,25 @@ export default function SettingsPage() {
 
             <button
               type="button"
-              onClick={() => void handleCreateGoal()}
+              onClick={() => void handleSaveHabit()}
               disabled={savingGoal || !goalText.trim()}
               className="mt-1 w-full rounded-lg bg-mint-600 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-mint-700 disabled:opacity-60"
             >
-              {savingGoal ? "保存中…" : "習慣を追加"}
+              {savingGoal
+                ? "保存中…"
+                : editingGoalId
+                ? "習慣を更新"
+                : "習慣を追加"}
             </button>
+            {editingGoalId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              >
+                キャンセル
+              </button>
+            )}
           </div>
 
           {goalError && (
@@ -251,6 +308,22 @@ export default function SettingsPage() {
                     期間: {formatDate(goal.startDate)} 〜{" "}
                     {formatDate(goal.endDate)}
                   </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(goal)}
+                      className="flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-[0.65rem] font-bold text-slate-600 hover:border-mint-300 hover:text-mint-700"
+                    >
+                      <Pencil className="h-3 w-3" /> 編集
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteHabit(goal.id)}
+                      className="flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-1 text-[0.65rem] font-bold text-rose-600 hover:bg-rose-100"
+                    >
+                      <Trash2 className="h-3 w-3" /> 削除
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

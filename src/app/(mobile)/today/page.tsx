@@ -70,6 +70,7 @@ export default function TodayPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [goalsError, setGoalsError] = useState<string | null>(null);
+  const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [canEditMorning, setCanEditMorning] = useState(true);
   const [canEditEvening, setCanEditEvening] = useState(true);
 
@@ -206,7 +207,20 @@ export default function TodayPage() {
   const handleHabitCheck = useCallback(
     async (goalId: string, nextChecked: boolean) => {
       if (!user) return;
+      if (habitLoading[goalId]) return;
       setGoalsError(null);
+      setHabitLoading((prev) => ({ ...prev, [goalId]: true }));
+
+      let previousChecked = false;
+      setGoals((prev) =>
+        prev.map((habit) => {
+          if (habit.id === goalId) {
+            previousChecked = habit.checkedToday ?? false;
+            return { ...habit, checkedToday: nextChecked };
+          }
+          return habit;
+        })
+      );
       try {
         const token = await user.getIdToken();
         const res = await fetch("/api/goals/check", {
@@ -246,9 +260,19 @@ export default function TodayPage() {
       } catch (error) {
         console.error(error);
         setGoalsError("習慣のチェック更新に失敗しました。");
+        setGoals((prev) =>
+          prev.map((habit) =>
+            habit.id === goalId ? { ...habit, checkedToday: previousChecked } : habit
+          )
+        );
       }
+      setHabitLoading((prev) => {
+        const copy = { ...prev };
+        delete copy[goalId];
+        return copy;
+      });
     },
-    [user, selectedDate]
+    [user, selectedDate, habitLoading]
   );
 
   return (
@@ -286,6 +310,7 @@ export default function TodayPage() {
                     key={habit.id}
                     habit={habit}
                     onToggle={handleHabitCheck}
+                    loading={habitLoading[habit.id]}
                     disabled={habit.isHallOfFame}
                   />
                 ))}
@@ -1017,10 +1042,12 @@ function PillToggle({
 function HabitCard({
   habit,
   onToggle,
+  loading,
   disabled,
 }: {
   habit: Goal;
   onToggle: (goalId: string, nextChecked: boolean) => void;
+  loading?: boolean;
   disabled?: boolean;
 }) {
   const isHallOfFame = habit.isHallOfFame || Boolean(habit.hallOfFameAt);
@@ -1054,18 +1081,19 @@ function HabitCard({
       </div>
       <button
         type="button"
-        disabled={disabled || isHallOfFame}
+        disabled={disabled || isHallOfFame || loading}
         onClick={() => onToggle(habit.id, !checked)}
         className={cn(
           "flex h-12 w-12 items-center justify-center rounded-full border-2 text-xl font-extrabold transition-all",
           checked
             ? "border-mint-500 bg-mint-100 text-mint-700 shadow-sm"
             : "border-slate-200 bg-white text-slate-300 hover:border-slate-300",
-          (disabled || isHallOfFame) && "cursor-default opacity-60"
+          (disabled || isHallOfFame || loading) && "cursor-default opacity-60",
+          loading && "animate-pulse"
         )}
         aria-pressed={checked}
       >
-        {checked ? "◎" : "○"}
+        {loading ? "…" : checked ? "◎" : "○"}
       </button>
     </div>
   );

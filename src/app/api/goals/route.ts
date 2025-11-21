@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { DocumentReference } from "firebase-admin/firestore";
+import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { goalSchema, type GoalInput } from "@/lib/schemas/goal";
@@ -98,6 +99,76 @@ export async function POST(request: Request) {
     console.error(error);
     return NextResponse.json(
       { error: "目標の保存に失敗しました。" },
+      { status: 400 }
+    );
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const user = await verifyRequestUser(request);
+    const payload = await request.json();
+    const parsed = z
+      .object({
+        id: z.string().min(1),
+        text: z.string().min(1),
+        startDate: z.string().min(1),
+        endDate: z.string().min(1),
+      })
+      .parse(payload);
+
+    const start = new Date(parsed.startDate);
+    const end = new Date(parsed.endDate);
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime()) ||
+      end < start
+    ) {
+      return NextResponse.json(
+        { error: "期間の指定が正しくありません。" },
+        { status: 400 }
+      );
+    }
+
+    const expire = new Date(end);
+    expire.setDate(expire.getDate() + 1);
+    const goalRef = collectionFor(user.uid).doc(parsed.id);
+
+    await goalRef.set(
+      {
+        text: parsed.text,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+        expireAt: expire.toISOString(),
+      },
+      { merge: true }
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "目標の更新に失敗しました。" },
+      { status: 400 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await verifyRequestUser(request);
+    const { searchParams } = new URL(request.url);
+    const goalId = searchParams.get("id");
+    if (!goalId) {
+      return NextResponse.json({ error: "id is required" }, { status: 400 });
+    }
+    const goalRef = collectionFor(user.uid).doc(goalId);
+    await goalRef.delete();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "目標の削除に失敗しました。" },
       { status: 400 }
     );
   }
