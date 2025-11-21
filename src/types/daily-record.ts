@@ -5,6 +5,13 @@ export type MealEntry = {
   photoUrl?: string | null;
 };
 
+export type MissNextEntry = {
+  miss: string;
+  next: string;
+};
+
+export type EveningVerdict = "optimal" | "good" | "compromise";
+
 export type DailyRecord = {
   date: string;
   weightKg: number | null;
@@ -27,6 +34,13 @@ export type DailyRecord = {
   challenge: string;
   journal: string;
   photoUrls: string[];
+  healthCheck: boolean;
+  workCheck: boolean;
+  familyCheck: boolean;
+  tradeOffs: string[];
+  missNext: MissNextEntry[];
+  tomorrowAction: string;
+  verdict?: EveningVerdict | null;
   createdAt?: string;
   updatedAt?: string;
 };

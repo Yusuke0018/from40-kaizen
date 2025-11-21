@@ -31,6 +31,20 @@ export const dailyRecordSchema = z.object({
   challenge: z.string().optional(),
   journal: z.string().optional(),
   photoUrls: z.array(z.string()).default([]),
+  healthCheck: z.boolean().default(false),
+  workCheck: z.boolean().default(false),
+  familyCheck: z.boolean().default(false),
+  tradeOffs: z.array(z.string()).default([]),
+  missNext: z
+    .array(
+      z.object({
+        miss: z.string().optional(),
+        next: z.string().optional(),
+      })
+    )
+    .default([]),
+  tomorrowAction: z.string().default(""),
+  verdict: z.enum(["optimal", "good", "compromise"]).nullable().optional(),
 });
 
 export type DailyRecordInput = z.infer<typeof dailyRecordSchema>;

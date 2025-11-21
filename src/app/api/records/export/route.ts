@@ -23,6 +23,13 @@ const defaultColumns = [
   "emotionNote",
   "highlight",
   "challenge",
+  "healthCheck",
+  "workCheck",
+  "familyCheck",
+  "tradeOffs",
+  "missNext",
+  "tomorrowAction",
+  "verdict",
   "photoUrls",
 ];
 
@@ -89,6 +96,13 @@ function formatValue(column: string, value: unknown) {
       return escapeCsv(meals.join("|"));
     }
 
+    if (column === "missNext" && isMissNextList(value)) {
+      const pairs = value.map(
+        (entry) => `MISS: ${entry.miss ?? ""} / NEXT: ${entry.next ?? ""}`.trim()
+      );
+      return escapeCsv(pairs.join("|"));
+    }
+
     if (value.every((item) => typeof item === "string" || typeof item === "number")) {
       return escapeCsv(value.join("|"));
     }
@@ -132,5 +146,19 @@ function isMealList(value: unknown[]): value is MealValue[] {
       item !== null &&
       typeof item === "object" &&
       ("time" in item || "note" in item || "photoUrl" in item)
+  );
+}
+
+type MissNextValue = {
+  miss?: string;
+  next?: string;
+};
+
+function isMissNextList(value: unknown[]): value is MissNextValue[] {
+  return value.every(
+    (item) =>
+      item !== null &&
+      typeof item === "object" &&
+      ("miss" in item || "next" in item)
   );
 }

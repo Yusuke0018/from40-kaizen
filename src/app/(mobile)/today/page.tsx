@@ -37,6 +37,13 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   challenge: "",
   journal: "",
   photoUrls: [],
+  healthCheck: false,
+  workCheck: false,
+  familyCheck: false,
+  tradeOffs: [],
+  missNext: [],
+  tomorrowAction: "",
+  verdict: null,
 });
 
 export default function TodayPage() {
@@ -68,6 +75,13 @@ export default function TodayPage() {
         date,
         photoUrls: data.photoUrls ?? [],
         meals: (data as DailyRecord).meals ?? [],
+        tradeOffs: (data as DailyRecord).tradeOffs ?? [],
+        missNext: (data as DailyRecord).missNext ?? [],
+        healthCheck: data.healthCheck ?? false,
+        workCheck: data.workCheck ?? false,
+        familyCheck: data.familyCheck ?? false,
+        tomorrowAction: data.tomorrowAction ?? "",
+        verdict: data.verdict ?? null,
       };
     },
     [user]
@@ -539,6 +553,266 @@ export default function TodayPage() {
                   }))
                 }
               />
+              <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    H / W / F チェック
+                  </p>
+                  <p className="text-[0.7rem] text-slate-400">タップで○×</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <PillToggle
+                    label="H"
+                    description="運動・ストレッチ"
+                    active={record.healthCheck}
+                    disabled={!canEditEvening}
+                    onClick={() =>
+                      setRecord((prev) => ({
+                        ...prev,
+                        healthCheck: !prev.healthCheck,
+                      }))
+                    }
+                  />
+                  <PillToggle
+                    label="W"
+                    description="未来の一手"
+                    active={record.workCheck}
+                    disabled={!canEditEvening}
+                    onClick={() =>
+                      setRecord((prev) => ({
+                        ...prev,
+                        workCheck: !prev.workCheck,
+                      }))
+                    }
+                  />
+                  <PillToggle
+                    label="F"
+                    description="家族への一手"
+                    active={record.familyCheck}
+                    disabled={!canEditEvening}
+                    onClick={() =>
+                      setRecord((prev) => ({
+                        ...prev,
+                        familyCheck: !prev.familyCheck,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-indigo-100 bg-indigo-50/70 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                    今日のトレードオフ【TO】
+                  </p>
+                  <p className="text-[0.7rem] text-indigo-500">「捨てた → 取った」</p>
+                </div>
+                {record.tradeOffs.length === 0 && (
+                  <p className="text-[0.75rem] text-slate-500">
+                    例: 寝る前スマホ30分 → 子どもと風呂
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {record.tradeOffs.map((item, index) => (
+                    <div key={`to-${index}`} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={item}
+                        maxLength={50}
+                        disabled={!canEditEvening}
+                        onChange={(event) => {
+                          const next = [...record.tradeOffs];
+                          next[index] = event.target.value;
+                          setRecord((prev) => ({ ...prev, tradeOffs: next }));
+                        }}
+                        placeholder="捨てたもの → 取ったもの"
+                        className={cn(
+                          "flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50",
+                          !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
+                        )}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...record.tradeOffs];
+                          next.splice(index, 1);
+                          setRecord((prev) => ({ ...prev, tradeOffs: next }));
+                        }}
+                        disabled={!canEditEvening}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRecord((prev) => ({
+                      ...prev,
+                      tradeOffs: [...prev.tradeOffs, ""],
+                    }))
+                  }
+                  disabled={!canEditEvening}
+                  className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  TO を追加
+                </button>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-rose-100 bg-rose-50/70 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-rose-600">
+                    しくじり【MISS】＋修正【NEXT】
+                  </p>
+                  <p className="text-[0.7rem] text-rose-500">事実と明日の行動セット</p>
+                </div>
+                {record.missNext.length === 0 && (
+                  <p className="text-[0.75rem] text-slate-500">
+                    例: MISS「昼休みスマホで潰れた」 / NEXT「昼休みに外を10分歩く」
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {record.missNext.map((item, index) => (
+                    <div
+                      key={`mn-${index}`}
+                      className="grid gap-2 rounded-lg border border-rose-100 bg-white/70 p-3 sm:grid-cols-2"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-rose-500">
+                          MISS
+                        </p>
+                        <input
+                          type="text"
+                          value={item.miss}
+                          maxLength={80}
+                          disabled={!canEditEvening}
+                          onChange={(event) => {
+                            const next = [...record.missNext];
+                            next[index] = { ...next[index], miss: event.target.value };
+                            setRecord((prev) => ({ ...prev, missNext: next }));
+                          }}
+                          placeholder="事実のみを書く"
+                          className={cn(
+                            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-rose-300 focus:ring-2 focus:ring-rose-50",
+                            !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-600">
+                          NEXT
+                        </p>
+                        <input
+                          type="text"
+                          value={item.next}
+                          maxLength={80}
+                          disabled={!canEditEvening}
+                          onChange={(event) => {
+                            const next = [...record.missNext];
+                            next[index] = { ...next[index], next: event.target.value };
+                            setRecord((prev) => ({ ...prev, missNext: next }));
+                          }}
+                          placeholder="明日の具体的行動"
+                          className={cn(
+                            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-emerald-300 focus:ring-2 focus:ring-emerald-50",
+                            !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
+                          )}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...record.missNext];
+                            next.splice(index, 1);
+                            setRecord((prev) => ({ ...prev, missNext: next }));
+                          }}
+                          disabled={!canEditEvening}
+                          className="w-full rounded-lg border border-rose-200 bg-white px-2 py-2 text-xs font-bold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          このセットを削除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setRecord((prev) => ({
+                      ...prev,
+                      missNext: [...prev.missNext, { miss: "", next: "" }],
+                    }))
+                  }
+                  disabled={!canEditEvening}
+                  className="w-full rounded-lg border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  MISS / NEXT を追加
+                </button>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    明日の一手【TMR】
+                  </p>
+                  <p className="text-[0.7rem] text-slate-400">5〜15分で終わる行動</p>
+                </div>
+                <Field
+                  label="◯◯を△分だけやる"
+                  placeholder="例: 歯磨き中スクワット2セット"
+                  value={record.tomorrowAction}
+                  disabled={!canEditEvening}
+                  onChange={(value) =>
+                    setRecord((prev) => ({
+                      ...prev,
+                      tomorrowAction: value,
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                  判定（任意）
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "optimal", label: "◎ 最適" },
+                    { value: "good", label: "○ まぁ良い" },
+                    { value: "compromise", label: "× ごまかし" },
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      disabled={!canEditEvening}
+                      onClick={() =>
+                        setRecord((prev) => ({
+                          ...prev,
+                          verdict:
+                            prev.verdict === option.value
+                              ? null
+                              : (option.value as DailyRecord["verdict"]),
+                        }))
+                      }
+                      className={cn(
+                        "rounded-lg border px-3 py-2 text-xs font-bold transition-all",
+                        record.verdict === option.value
+                          ? "border-slate-900 bg-white text-slate-900 shadow-sm"
+                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300",
+                        !canEditEvening && "cursor-default opacity-60"
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[0.7rem] text-slate-500">
+                  メイン対象が一つ / メインの質7点以上 / 何を捨てたか明確、の3条件で判定。
+                </p>
+              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -611,6 +885,43 @@ function Field({
         )}
       />
     </label>
+  );
+}
+
+function PillToggle({
+  label,
+  description,
+  active,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  description: string;
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex flex-col items-center justify-center rounded-xl border px-3 py-3 text-center text-xs font-bold shadow-sm transition-all",
+        active
+          ? "border-slate-900 bg-white text-slate-900"
+          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300",
+        disabled && "cursor-default opacity-60"
+      )}
+    >
+      <span className="text-base">{active ? "○" : "×"}</span>
+      <div className="mt-1">
+        <span className="text-sm">{label}</span>
+        <p className="mt-1 text-[0.65rem] font-medium text-slate-400">
+          {description}
+        </p>
+      </div>
+    </button>
   );
 }
 
