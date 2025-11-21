@@ -6,7 +6,7 @@ export const goalSchema = z.object({
   endDate: z.string().min(1),
   expireAt: z.string().optional(),
   createdAt: z.string().optional(),
+  hallOfFameAt: z.string().optional().nullable(),
 });
 
 export type GoalInput = z.infer<typeof goalSchema>;
-

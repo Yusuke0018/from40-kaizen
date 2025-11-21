@@ -128,7 +128,7 @@ export default function TodayPage() {
     setGoalsError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/goals", {
+      const res = await fetch(`/api/goals?date=${selectedDate}&limit=2`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -140,7 +140,7 @@ export default function TodayPage() {
       console.error(error);
       setGoalsError("目標の取得に失敗しました。時間をおいて再度お試しください。");
     }
-  }, [user]);
+  }, [user, selectedDate]);
 
   useEffect(() => {
     if (!user) return;
@@ -203,37 +203,119 @@ export default function TodayPage() {
     }
   }
 
+  const handleHabitCheck = useCallback(
+    async (goalId: string, nextChecked: boolean) => {
+      if (!user) return;
+      setGoalsError(null);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/goals/check", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            goalId,
+            date: selectedDate,
+            checked: nextChecked,
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(await res.text());
+        }
+        const data = (await res.json()) as {
+          streak?: number;
+          hallOfFameAt?: string | null;
+        };
+        setGoals((prev) =>
+          prev.map((habit) =>
+            habit.id === goalId
+              ? {
+                  ...habit,
+                  checkedToday: nextChecked,
+                  streak: data.streak ?? habit.streak ?? 0,
+                  hallOfFameAt: data.hallOfFameAt ?? habit.hallOfFameAt ?? null,
+                  isHallOfFame: Boolean(
+                    data.hallOfFameAt ?? habit.hallOfFameAt
+                  ),
+                }
+              : habit
+          )
+        );
+      } catch (error) {
+        console.error(error);
+        setGoalsError("習慣のチェック更新に失敗しました。");
+      }
+    },
+    [user, selectedDate]
+  );
+
   return (
     <div className="space-y-6 pb-16 md:pb-10" id="record">
-      {/* 現在有効な目標 */}
-      {goals.length > 0 && (
-        <section className="rounded-xl border-2 border-slate-900 bg-rose-50/80 p-4 shadow-[var(--shadow-soft)]">
-          <p className="text-[0.65rem] font-bold uppercase tracking-widest text-rose-500">
-            Current Goals
-          </p>
-          <div className="mt-2 space-y-2">
-            {goals.map((goal) => (
-              <div
-                key={goal.id}
-                className="space-y-1 rounded-lg border-2 border-slate-900 bg-white/90 p-3 text-xs text-rose-900"
-              >
-                <p className="font-semibold">{goal.text}</p>
-                <p className="text-[0.7rem] text-rose-500">
-                  期間: {formatGoalDate(goal.startDate)} 〜{" "}
-                  {formatGoalDate(goal.endDate)}
-                </p>
-              </div>
-            ))}
+      {/* 習慣 */}
+      <section className="rounded-xl border-2 border-slate-900 bg-rose-50/80 p-4 shadow-[var(--shadow-soft)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[0.65rem] font-bold uppercase tracking-widest text-rose-500">
+              Habits (max 2)
+            </p>
+            <p className="text-[0.75rem] text-rose-500">
+              毎日チェックして 90 日で殿堂入り
+            </p>
           </div>
-        </section>
-      )}
-      {goalsError && (
-        <section className="text-xs">
-          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 font-semibold text-rose-600">
+          <span className="rounded-full bg-white px-2 py-1 text-[0.7rem] font-bold text-rose-600">
+            {formatGoalDate(selectedDate)}
+          </span>
+        </div>
+        <div className="mt-3 space-y-3">
+          {(() => {
+            const activeHabits = goals.filter((g) => !g.isHallOfFame).slice(0, 2);
+            const hallOfFameHabits = goals.filter((g) => g.isHallOfFame);
+            if (activeHabits.length === 0 && hallOfFameHabits.length === 0) {
+              return (
+                <p className="rounded-lg border border-dashed border-rose-100 bg-white/80 p-3 text-[0.8rem] text-rose-500">
+                  まだ習慣がありません。設定画面から追加してください。
+                </p>
+              );
+            }
+            return (
+              <>
+                {activeHabits.map((habit) => (
+                  <HabitCard
+                    key={habit.id}
+                    habit={habit}
+                    onToggle={handleHabitCheck}
+                    disabled={habit.isHallOfFame}
+                  />
+                ))}
+                {hallOfFameHabits.length > 0 && (
+                  <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/70 p-3">
+                    <p className="text-[0.65rem] font-bold uppercase tracking-widest text-amber-600">
+                      殿堂入り
+                    </p>
+                    <div className="grid gap-2">
+                      {hallOfFameHabits.map((habit) => (
+                        <div
+                          key={`hof-${habit.id}`}
+                          className="rounded-lg border border-amber-200 bg-white/80 p-3 text-[0.8rem] font-semibold text-amber-800"
+                        >
+                          {habit.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        {goalsError && (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-600">
             {goalsError}
           </p>
-        </section>
-      )}
+        )}
+      </section>
       {/* ヘッダー */}
       <section className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -929,6 +1011,63 @@ function PillToggle({
         </p>
       </div>
     </button>
+  );
+}
+
+function HabitCard({
+  habit,
+  onToggle,
+  disabled,
+}: {
+  habit: Goal;
+  onToggle: (goalId: string, nextChecked: boolean) => void;
+  disabled?: boolean;
+}) {
+  const isHallOfFame = habit.isHallOfFame || Boolean(habit.hallOfFameAt);
+  const checked = habit.checkedToday ?? false;
+  const streak = habit.streak ?? 0;
+  const progress = Math.min(90, streak);
+  return (
+    <div className="flex items-center gap-3 rounded-lg border-2 border-slate-900 bg-white/90 p-3 shadow-[var(--shadow-soft)]">
+      <div className="flex-1 space-y-1">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-900">{habit.text}</p>
+          {isHallOfFame && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[0.65rem] font-bold text-amber-700">
+              殿堂入り
+            </span>
+          )}
+        </div>
+        <p className="text-[0.7rem] text-slate-500">
+          期間: {formatGoalDate(habit.startDate)} 〜 {formatGoalDate(habit.endDate)}
+        </p>
+        <div className="mt-1 flex items-center gap-2 text-[0.75rem] text-slate-600">
+          <div className="flex-1 rounded-full bg-slate-100">
+            <div
+              className="h-2 rounded-full bg-mint-500"
+              style={{ width: `${(progress / 90) * 100}%` }}
+            />
+          </div>
+          <span className="font-bold">{progress}/90</span>
+          <span className="text-[0.65rem] text-slate-400">streak</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        disabled={disabled || isHallOfFame}
+        onClick={() => onToggle(habit.id, !checked)}
+        className={cn(
+          "flex h-12 w-12 items-center justify-center rounded-full border-2 text-xl font-extrabold transition-all",
+          checked
+            ? "border-mint-500 bg-mint-100 text-mint-700 shadow-sm"
+            : "border-slate-200 bg-white text-slate-300 hover:border-slate-300",
+          (disabled || isHallOfFame) && "cursor-default opacity-60"
+        )}
+        aria-pressed={checked}
+      >
+        {checked ? "◎" : "○"}
+      </button>
+    </div>
   );
 }
 

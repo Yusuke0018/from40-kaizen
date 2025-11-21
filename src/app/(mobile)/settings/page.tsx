@@ -15,10 +15,17 @@ export default function SettingsPage() {
 
   const [goalText, setGoalText] = useState("");
   const [goalStartDate, setGoalStartDate] = useState(isoToday());
-  const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(6)); // デフォルト1週間
+  const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(89)); // 90日習慣
   const [savingGoal, setSavingGoal] = useState(false);
 
-  const activeGoals = useMemo(() => goals, [goals]);
+  const activeGoals = useMemo(
+    () => goals.filter((goal) => !goal.isHallOfFame),
+    [goals]
+  );
+  const hallOfFameGoals = useMemo(
+    () => goals.filter((goal) => goal.isHallOfFame),
+    [goals]
+  );
 
   const loadGoals = useCallback(async () => {
     if (!user) return;
@@ -26,7 +33,7 @@ export default function SettingsPage() {
     setGoalError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch("/api/goals", {
+      const res = await fetch(`/api/goals?date=${isoToday()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -50,6 +57,10 @@ export default function SettingsPage() {
   async function handleCreateGoal() {
     if (!user) return;
     if (!goalText.trim()) return;
+    if (activeGoals.length >= 2) {
+      setGoalError("習慣は最大2つまでです。1つ完了させてから追加してください。");
+      return;
+    }
 
     setSavingGoal(true);
     setGoalError(null);
@@ -75,7 +86,7 @@ export default function SettingsPage() {
       }
       setGoalText("");
       setGoalStartDate(isoToday());
-      setGoalEndDate(isoTodayPlusDays(6));
+      setGoalEndDate(isoTodayPlusDays(89));
       await loadGoals();
     } catch (error) {
       console.error(error);
@@ -100,7 +111,7 @@ export default function SettingsPage() {
     <div className="space-y-8 pb-10">
       <section>
         <h2 className="mb-6 text-3xl font-bold tracking-tight text-slate-900">
-          Goals
+          Habits
         </h2>
 
         {/* アカウント情報カード */}
@@ -120,27 +131,27 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* 期間付き目標 */}
-      <SettingsGroup title="Goals" icon={<FlaskConical className="h-4 w-4" />}>
+      {/* 習慣設定 */}
+      <SettingsGroup title="Habits" icon={<FlaskConical className="h-4 w-4" />}>
         <div className="space-y-4 p-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-slate-500">
-              一週間・一ヶ月など、期間を決めた目標を記録します。
+              習慣化したいことを最大2つまで登録し、毎日チェックします。
             </p>
             <p className="text-[0.7rem] text-slate-400">
-              期間が終了してから24時間経過すると、自動的にここから非表示になります。
+              90日間チェックできたら殿堂入り。デフォルトで90日間の期間をセットします。
             </p>
           </div>
 
           <div className="space-y-3 rounded-lg border-2 border-slate-900 bg-slate-50/60 p-3">
             <label className="block">
               <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                目標内容
+                習慣内容
               </span>
               <textarea
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50"
                 rows={3}
-                placeholder="例: 1週間、カフェインは午前中だけにする"
+                placeholder="例: 毎晩ストレッチを5分やる"
                 value={goalText}
                 onChange={(event) => setGoalText(event.target.value)}
               />
@@ -179,10 +190,10 @@ export default function SettingsPage() {
                   onClick={() => {
                     const start = isoToday();
                     setGoalStartDate(start);
-                    setGoalEndDate(isoTodayPlusDays(6));
+                    setGoalEndDate(isoTodayPlusDays(89));
                   }}
                 >
-                  今日から1週間
+                  今日から90日
                 </button>
                 <button
                   type="button"
@@ -193,7 +204,7 @@ export default function SettingsPage() {
                     setGoalEndDate(isoTodayPlusMonths(1));
                   }}
                 >
-                  今日から1ヶ月
+                  今日から1ヶ月（短期）
                 </button>
               </div>
               <p className="text-[0.7rem] font-medium text-slate-500">
@@ -207,7 +218,7 @@ export default function SettingsPage() {
               disabled={savingGoal || !goalText.trim()}
               className="mt-1 w-full rounded-lg bg-mint-600 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-mint-700 disabled:opacity-60"
             >
-              {savingGoal ? "保存中…" : "目標を追加"}
+              {savingGoal ? "保存中…" : "習慣を追加"}
             </button>
           </div>
 
@@ -218,15 +229,15 @@ export default function SettingsPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <p className="font-bold uppercase tracking-wider text-slate-500">
-                進行中の目標
+                進行中の習慣
               </p>
               <p className="font-semibold text-slate-400">
-                {loadingGoals ? "読み込み中…" : `${activeGoals.length} 件`}
+                {loadingGoals ? "読み込み中…" : `${activeGoals.length}/2 件`}
               </p>
             </div>
             {activeGoals.length === 0 && !loadingGoals && (
               <p className="rounded-lg border border-dashed border-slate-200 bg-white/80 p-3 text-center text-[0.75rem] text-slate-500">
-                まだ期間付きの目標はありません。
+                まだ習慣はありません。
               </p>
             )}
             <div className="space-y-2">
@@ -243,6 +254,23 @@ export default function SettingsPage() {
                 </div>
               ))}
             </div>
+            {hallOfFameGoals.length > 0 && (
+              <div className="mt-4 space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                <p className="text-[0.65rem] font-bold uppercase tracking-wider text-amber-600">
+                  殿堂入り
+                </p>
+                <div className="space-y-1">
+                  {hallOfFameGoals.map((goal) => (
+                    <div
+                      key={`hof-${goal.id}`}
+                      className="rounded-lg border border-amber-200 bg-white/80 p-2 text-[0.8rem] font-semibold text-amber-800"
+                    >
+                      {goal.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </SettingsGroup>

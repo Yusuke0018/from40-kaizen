@@ -5,5 +5,9 @@ export type Goal = {
   endDate: string; // YYYY-MM-DD
   expireAt?: string;
   createdAt?: string;
+  hallOfFameAt?: string | null;
+  checkedToday?: boolean;
+  streak?: number;
+  totalChecks?: number;
+  isHallOfFame?: boolean;
 };
-
