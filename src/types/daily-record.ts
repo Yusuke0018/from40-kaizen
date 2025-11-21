@@ -10,7 +10,10 @@ export type MissNextEntry = {
   next: string;
 };
 
-export type EveningVerdict = "optimal" | "good" | "compromise";
+export type TradeOffEntry = {
+  give: string;
+  gain: string;
+};
 
 export type DailyRecord = {
   date: string;
@@ -37,10 +40,9 @@ export type DailyRecord = {
   healthCheck: boolean;
   workCheck: boolean;
   familyCheck: boolean;
-  tradeOffs: string[];
+  tradeOffs: TradeOffEntry[];
   missNext: MissNextEntry[];
   tomorrowAction: string;
-  verdict?: EveningVerdict | null;
   createdAt?: string;
   updatedAt?: string;
 };

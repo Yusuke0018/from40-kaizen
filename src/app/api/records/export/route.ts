@@ -29,7 +29,6 @@ const defaultColumns = [
   "tradeOffs",
   "missNext",
   "tomorrowAction",
-  "verdict",
   "photoUrls",
 ];
 
@@ -103,6 +102,18 @@ function formatValue(column: string, value: unknown) {
       return escapeCsv(pairs.join("|"));
     }
 
+    if (column === "tradeOffs" && isTradeOffList(value)) {
+      const pairs = value.map((entry) => {
+        if (typeof entry === "string") {
+          return `${entry} -> `;
+        }
+        const give = entry.give ?? "";
+        const gain = entry.gain ?? "";
+        return `${give} -> ${gain}`.trim();
+      });
+      return escapeCsv(pairs.join("|"));
+    }
+
     if (value.every((item) => typeof item === "string" || typeof item === "number")) {
       return escapeCsv(value.join("|"));
     }
@@ -160,5 +171,18 @@ function isMissNextList(value: unknown[]): value is MissNextValue[] {
       item !== null &&
       typeof item === "object" &&
       ("miss" in item || "next" in item)
+  );
+}
+
+type TradeOffValue = {
+  give?: string;
+  gain?: string;
+};
+
+function isTradeOffList(value: unknown[]): value is TradeOffValue[] {
+  return value.every(
+    (item) =>
+      (typeof item === "object" && item !== null && ("give" in item || "gain" in item)) ||
+      typeof item === "string"
   );
 }

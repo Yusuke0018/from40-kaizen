@@ -34,7 +34,17 @@ export const dailyRecordSchema = z.object({
   healthCheck: z.boolean().default(false),
   workCheck: z.boolean().default(false),
   familyCheck: z.boolean().default(false),
-  tradeOffs: z.array(z.string()).default([]),
+  tradeOffs: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({
+          give: z.string().optional(),
+          gain: z.string().optional(),
+        }),
+      ])
+    )
+    .default([]),
   missNext: z
     .array(
       z.object({
@@ -44,7 +54,6 @@ export const dailyRecordSchema = z.object({
     )
     .default([]),
   tomorrowAction: z.string().default(""),
-  verdict: z.enum(["optimal", "good", "compromise"]).nullable().optional(),
 });
 
 export type DailyRecordInput = z.infer<typeof dailyRecordSchema>;

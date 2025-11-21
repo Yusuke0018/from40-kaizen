@@ -43,8 +43,22 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   tradeOffs: [],
   missNext: [],
   tomorrowAction: "",
-  verdict: null,
 });
+
+function normalizeTradeOffs(
+  input?: DailyRecord["tradeOffs"] | (string | { give?: string; gain?: string })[]
+): DailyRecord["tradeOffs"] {
+  if (!input) return [];
+  return input.map((item) => {
+    if (typeof item === "string") {
+      return { give: item, gain: "" };
+    }
+    return {
+      give: item.give ?? "",
+      gain: item.gain ?? "",
+    };
+  });
+}
 
 export default function TodayPage() {
   const { user } = useAuthContext();
@@ -75,13 +89,12 @@ export default function TodayPage() {
         date,
         photoUrls: data.photoUrls ?? [],
         meals: (data as DailyRecord).meals ?? [],
-        tradeOffs: (data as DailyRecord).tradeOffs ?? [],
+        tradeOffs: normalizeTradeOffs((data as DailyRecord).tradeOffs),
         missNext: (data as DailyRecord).missNext ?? [],
         healthCheck: data.healthCheck ?? false,
         workCheck: data.workCheck ?? false,
         familyCheck: data.familyCheck ?? false,
         tomorrowAction: data.tomorrowAction ?? "",
-        verdict: data.verdict ?? null,
       };
     },
     [user]
@@ -614,35 +627,66 @@ export default function TodayPage() {
                 )}
                 <div className="space-y-2">
                   {record.tradeOffs.map((item, index) => (
-                    <div key={`to-${index}`} className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={item}
-                        maxLength={50}
-                        disabled={!canEditEvening}
-                        onChange={(event) => {
-                          const next = [...record.tradeOffs];
-                          next[index] = event.target.value;
-                          setRecord((prev) => ({ ...prev, tradeOffs: next }));
-                        }}
-                        placeholder="捨てたもの → 取ったもの"
-                        className={cn(
-                          "flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50",
-                          !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
-                        )}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = [...record.tradeOffs];
-                          next.splice(index, 1);
-                          setRecord((prev) => ({ ...prev, tradeOffs: next }));
-                        }}
-                        disabled={!canEditEvening}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        削除
-                      </button>
+                    <div
+                      key={`to-${index}`}
+                      className="grid gap-2 rounded-lg border border-indigo-100 bg-white/80 p-3 sm:grid-cols-2"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-indigo-500">
+                          捨てた
+                        </p>
+                        <input
+                          type="text"
+                          value={item.give}
+                          maxLength={50}
+                          disabled={!canEditEvening}
+                          onChange={(event) => {
+                            const next = [...record.tradeOffs];
+                            next[index] = { ...next[index], give: event.target.value };
+                            setRecord((prev) => ({ ...prev, tradeOffs: next }));
+                          }}
+                          placeholder="何を手放した？"
+                          className={cn(
+                            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50",
+                            !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
+                          )}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[0.65rem] font-bold uppercase tracking-wider text-sky-600">
+                          取った
+                        </p>
+                        <input
+                          type="text"
+                          value={item.gain}
+                          maxLength={50}
+                          disabled={!canEditEvening}
+                          onChange={(event) => {
+                            const next = [...record.tradeOffs];
+                            next[index] = { ...next[index], gain: event.target.value };
+                            setRecord((prev) => ({ ...prev, tradeOffs: next }));
+                          }}
+                          placeholder="何を得た？"
+                          className={cn(
+                            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-900 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50",
+                            !canEditEvening && "cursor-default bg-slate-100 text-slate-400"
+                          )}
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = [...record.tradeOffs];
+                            next.splice(index, 1);
+                            setRecord((prev) => ({ ...prev, tradeOffs: next }));
+                          }}
+                          disabled={!canEditEvening}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          このトレードオフを削除
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -651,7 +695,7 @@ export default function TodayPage() {
                   onClick={() =>
                     setRecord((prev) => ({
                       ...prev,
-                      tradeOffs: [...prev.tradeOffs, ""],
+                      tradeOffs: [...prev.tradeOffs, { give: "", gain: "" }],
                     }))
                   }
                   disabled={!canEditEvening}
@@ -774,45 +818,6 @@ export default function TodayPage() {
                 />
               </div>
 
-              <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                  判定（任意）
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { value: "optimal", label: "◎ 最適" },
-                    { value: "good", label: "○ まぁ良い" },
-                    { value: "compromise", label: "× ごまかし" },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      disabled={!canEditEvening}
-                      onClick={() =>
-                        setRecord((prev) => ({
-                          ...prev,
-                          verdict:
-                            prev.verdict === option.value
-                              ? null
-                              : (option.value as DailyRecord["verdict"]),
-                        }))
-                      }
-                      className={cn(
-                        "rounded-lg border px-3 py-2 text-xs font-bold transition-all",
-                        record.verdict === option.value
-                          ? "border-slate-900 bg-white text-slate-900 shadow-sm"
-                          : "border-slate-200 bg-white text-slate-500 hover:border-slate-300",
-                        !canEditEvening && "cursor-default opacity-60"
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[0.7rem] text-slate-500">
-                  メイン対象が一つ / メインの質7点以上 / 何を捨てたか明確、の3条件で判定。
-                </p>
-              </div>
               <Button
                 type="button"
                 variant="outline"
@@ -907,14 +912,16 @@ function PillToggle({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "flex flex-col items-center justify-center rounded-xl border px-3 py-3 text-center text-xs font-bold shadow-sm transition-all",
+        "flex flex-col items-center justify-center rounded-xl border px-3 py-3 text-center text-xs font-bold shadow-md transition-all",
         active
-          ? "border-slate-900 bg-white text-slate-900"
+          ? "border-slate-900 bg-mint-100 text-slate-900 ring-2 ring-mint-400"
           : "border-slate-200 bg-white text-slate-500 hover:border-slate-300",
         disabled && "cursor-default opacity-60"
       )}
     >
-      <span className="text-base">{active ? "○" : "×"}</span>
+      <span className={cn("text-2xl", active ? "text-mint-700" : "text-slate-400")}>
+        {active ? "◎" : "×"}
+      </span>
       <div className="mt-1">
         <span className="text-sm">{label}</span>
         <p className="mt-1 text-[0.65rem] font-medium text-slate-400">
