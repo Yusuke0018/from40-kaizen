@@ -176,7 +176,7 @@ export default function SettingsPage() {
       </section>
 
       {/* 習慣設定 */}
-      <SettingsGroup title="Habits" icon={<FlaskConical className="h-4 w-4" />}>
+      <SettingsGroup title="Habits" icon={<Dumbbell className="h-4 w-4" />}>
         <div className="space-y-4 p-4">
           <div className="space-y-2">
             <p className="text-xs font-semibold text-slate-500">
