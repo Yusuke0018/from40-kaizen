@@ -1055,7 +1055,13 @@ function HabitCard({
   const streak = habit.streak ?? 0;
   const progress = Math.min(90, streak);
   return (
-    <div className="flex items-center gap-3 rounded-lg border-2 border-slate-900 bg-white/90 p-3 shadow-[var(--shadow-soft)]">
+    <div className="relative flex items-center gap-3 rounded-lg border-2 border-slate-900 bg-white/90 p-3 shadow-[var(--shadow-soft)]">
+      {checked && (
+        <div className="absolute right-2 top-2 rotate-6 rounded-full border-2 border-mint-600 bg-mint-50 px-2.5 py-1 text-[0.7rem] font-black text-mint-700 shadow-sm">
+          <span aria-hidden="true">完</span>
+          <span className="sr-only">今日の習慣を完了</span>
+        </div>
+      )}
       <div className="flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-900">{habit.text}</p>
