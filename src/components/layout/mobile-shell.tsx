@@ -7,8 +7,8 @@ import {
   CalendarDays,
   Download,
   Plus,
+  Sparkles,
   Sun,
-  SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +30,8 @@ const NAV_ITEMS = [
   },
   {
     href: "/settings",
-    label: "Settings",
-    icon: SlidersHorizontal,
+    label: "Habits",
+    icon: Sparkles,
   },
 ];
 
