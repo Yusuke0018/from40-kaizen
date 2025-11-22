@@ -4,3 +4,9 @@ Library/Caches/
 Library/Caches/Google/
 Library/Containers/
 Library/Application Support/
+
+# Downloads - Keyboard Maestro installers / apps (keep but exclude from snapshots)
+../Downloads/Keyboard Maestro.app/**
+../Downloads/Keyboard Maestro 2.app/**
+../Downloads/Keyboard Maestro 3.app/**
+../Downloads/keyboardmaestro-*.zip
