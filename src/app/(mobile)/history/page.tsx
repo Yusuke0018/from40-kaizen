@@ -309,9 +309,9 @@ function buildCorrelations(records: DailyRecord[]) {
     records.map((r) => r.sleepHours ?? 0),
     records.map((r) => r.moodEvening ?? r.moodMorning ?? 0)
   );
-  const caffeineMood = correlation(
-    records.map((r) => r.hydrationMl ?? 0),
-    records.map((r) => r.sleepiness ?? 0)
+  const focusMood = correlation(
+    records.map((r) => r.concentrationEvening ?? 0),
+    records.map((r) => r.moodEvening ?? r.moodMorning ?? 0)
   );
   const hrvMood = correlation(
     records.map((r) => r.hrv ?? 0),
@@ -325,10 +325,10 @@ function buildCorrelations(records: DailyRecord[]) {
       desc: "睡眠が長いほど気分スコアが高い傾向",
     },
     {
-      label: "水分 × 眠気",
-      value: caffeineMood.value,
-      trend: caffeineMood.trend,
-      desc: "水分補給が眠気をどう変えるかをチェック",
+      label: "集中力 × 気分",
+      value: focusMood.value,
+      trend: focusMood.trend,
+      desc: "集中力の高まりが気分にどう響くかをチェック",
     },
     {
       label: "HRV × 気分",

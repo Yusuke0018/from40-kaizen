@@ -15,8 +15,8 @@ const columnOptions = [
   "hrv",
   "moodMorning",
   "moodEvening",
+  "concentrationEvening",
   "steps",
-  "hydrationMl",
   "calories",
   "journal",
   "mealsNote",
@@ -24,6 +24,8 @@ const columnOptions = [
   "emotionNote",
   "highlight",
   "challenge",
+  "phoneAway",
+  "gratitudeShared",
   "photoUrls",
 ] as const;
 
@@ -37,8 +39,8 @@ const columnLabels: Record<(typeof columnOptions)[number], string> = {
   hrv: "hrv (HRV)",
   moodMorning: "moodMorning (朝気分)",
   moodEvening: "moodEvening (夜気分)",
+  concentrationEvening: "concentrationEvening (夜の集中力)",
   steps: "steps (歩数)",
-  hydrationMl: "hydrationMl (水分ml)",
   calories: "calories (kcal)",
   journal: "journal (AI評価メモ)",
   mealsNote: "mealsNote (食事メモ)",
@@ -46,6 +48,8 @@ const columnLabels: Record<(typeof columnOptions)[number], string> = {
   emotionNote: "emotionNote (感情メモ)",
   highlight: "highlight (ハイライト)",
   challenge: "challenge (課題)",
+  phoneAway: "phoneAway (寝る前スマホ手放し)",
+  gratitudeShared: "gratitudeShared (感謝を伝えた)",
   photoUrls: "photoUrls (写真URL一覧)",
 };
 
@@ -61,6 +65,7 @@ export default function ExportPage() {
     "sleepHours",
     "moodMorning",
     "hrv",
+    "concentrationEvening",
     "meals",
     "photoUrls",
     "journal",

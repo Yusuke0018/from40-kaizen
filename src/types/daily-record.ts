@@ -26,8 +26,8 @@ export type DailyRecord = {
   wakeCondition: number | null;
   moodMorning: number | null;
   moodEvening: number | null;
+  concentrationEvening: number | null;
   sleepiness: number | null;
-  hydrationMl: number | null;
   calories: number | null;
   steps: number | null;
   mealsNote: string;
@@ -37,9 +37,8 @@ export type DailyRecord = {
   challenge: string;
   journal: string;
   photoUrls: string[];
-  healthCheck: boolean;
-  workCheck: boolean;
-  familyCheck: boolean;
+  phoneAway: boolean;
+  gratitudeShared: boolean;
   tradeOffs: TradeOffEntry[];
   missNext: MissNextEntry[];
   tomorrowAction: string;

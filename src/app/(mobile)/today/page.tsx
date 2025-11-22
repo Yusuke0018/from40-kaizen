@@ -26,8 +26,8 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   wakeCondition: 3,
   moodMorning: 3,
   moodEvening: 3,
+  concentrationEvening: 3,
   sleepiness: 3,
-  hydrationMl: null,
   calories: null,
   steps: null,
   mealsNote: "",
@@ -37,9 +37,8 @@ const createEmptyRecord = (date: string): DailyRecord => ({
   challenge: "",
   journal: "",
   photoUrls: [],
-  healthCheck: false,
-  workCheck: false,
-  familyCheck: false,
+  phoneAway: false,
+  gratitudeShared: false,
   tradeOffs: [],
   missNext: [],
   tomorrowAction: "",
@@ -92,9 +91,9 @@ export default function TodayPage() {
         meals: (data as DailyRecord).meals ?? [],
         tradeOffs: normalizeTradeOffs((data as DailyRecord).tradeOffs),
         missNext: (data as DailyRecord).missNext ?? [],
-        healthCheck: data.healthCheck ?? false,
-        workCheck: data.workCheck ?? false,
-        familyCheck: data.familyCheck ?? false,
+        concentrationEvening: data.concentrationEvening ?? 3,
+        phoneAway: data.phoneAway ?? false,
+        gratitudeShared: data.gratitudeShared ?? false,
         tomorrowAction: data.tomorrowAction ?? "",
       };
     },
@@ -621,6 +620,19 @@ export default function TodayPage() {
                   }))
                 }
               />
+              <MoodRange
+                title="集中力"
+                helper="夕方〜夜の集中度 (0-5)"
+                value={record.concentrationEvening ?? 3}
+                tone="violet"
+                readOnly={!canEditEvening}
+                onChange={(value) =>
+                  setRecord((prev) => ({
+                    ...prev,
+                    concentrationEvening: value,
+                  }))
+                }
+              />
               <Field
                 label="1日の歩数"
                 type="number"
@@ -676,44 +688,32 @@ export default function TodayPage() {
               <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    H / W / F チェック
+                    夜のチェック
                   </p>
                   <p className="text-[0.7rem] text-slate-400">タップで○×</p>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <PillToggle
-                    label="H"
-                    description="運動・ストレッチ"
-                    active={record.healthCheck}
+                    label="スマホ"
+                    description="寝る前に手放した"
+                    active={record.phoneAway}
                     disabled={!canEditEvening}
                     onClick={() =>
                       setRecord((prev) => ({
                         ...prev,
-                        healthCheck: !prev.healthCheck,
+                        phoneAway: !prev.phoneAway,
                       }))
                     }
                   />
                   <PillToggle
-                    label="W"
-                    description="未来の一手"
-                    active={record.workCheck}
+                    label="感謝"
+                    description="誰かに伝えた"
+                    active={record.gratitudeShared}
                     disabled={!canEditEvening}
                     onClick={() =>
                       setRecord((prev) => ({
                         ...prev,
-                        workCheck: !prev.workCheck,
-                      }))
-                    }
-                  />
-                  <PillToggle
-                    label="F"
-                    description="家族への一手"
-                    active={record.familyCheck}
-                    disabled={!canEditEvening}
-                    onClick={() =>
-                      setRecord((prev) => ({
-                        ...prev,
-                        familyCheck: !prev.familyCheck,
+                        gratitudeShared: !prev.gratitudeShared,
                       }))
                     }
                   />

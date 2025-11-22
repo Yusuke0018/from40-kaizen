@@ -11,8 +11,8 @@ export const dailyRecordSchema = z.object({
   wakeCondition: z.number().nullable().optional(),
   moodMorning: z.number().nullable().optional(),
   moodEvening: z.number().nullable().optional(),
+  concentrationEvening: z.number().nullable().optional(),
   sleepiness: z.number().nullable().optional(),
-  hydrationMl: z.number().nullable().optional(),
   calories: z.number().nullable().optional(),
   steps: z.number().nullable().optional(),
   mealsNote: z.string().optional(),
@@ -31,9 +31,8 @@ export const dailyRecordSchema = z.object({
   challenge: z.string().optional(),
   journal: z.string().optional(),
   photoUrls: z.array(z.string()).default([]),
-  healthCheck: z.boolean().default(false),
-  workCheck: z.boolean().default(false),
-  familyCheck: z.boolean().default(false),
+  phoneAway: z.boolean().default(false),
+  gratitudeShared: z.boolean().default(false),
   tradeOffs: z
     .array(
       z.union([
