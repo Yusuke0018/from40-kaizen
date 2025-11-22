@@ -1,0 +1,10 @@
+timestamp: 20251122-153626
+branch: main
+head: 2deea02d1a7557e59f76b62394378def6c1f508b
+lint: not-run (config-only change)
+test: not-run (config-only change)
+push: ok
+
+changes:
+ .codexignore | 6 ++++++
+ 1 file changed, 6 insertions(+)
