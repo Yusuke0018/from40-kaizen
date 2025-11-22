@@ -6,6 +6,7 @@ import type { DailyRecord } from "@/types/daily-record";
 import { todayKey } from "@/lib/date";
 import {
   Activity,
+  AlertTriangle,
   BrainCircuit,
   Footprints,
   Moon,
@@ -57,6 +58,7 @@ export default function HistoryPage() {
 
   const summary = useMemo(() => summarize(records), [records]);
   const correlations = useMemo(() => buildCorrelations(records), [records]);
+  const missNextHistory = useMemo(() => buildMissNextHistory(records), [records]);
 
   return (
     <div className="space-y-8 pb-20">
@@ -159,6 +161,53 @@ export default function HistoryPage() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* しくじり / 修正履歴 */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 px-1">
+          <AlertTriangle className="h-4 w-4 text-rose-400" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-rose-500">
+            MISS / NEXT 履歴
+          </h3>
+        </div>
+        <div className="space-y-3">
+          {missNextHistory.map((item, index) => (
+            <div
+              key={`${item.date}-${index}`}
+              className="rounded-2xl border border-rose-100 bg-white p-4 shadow-[var(--shadow-soft)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <p className="text-[0.7rem] font-bold uppercase tracking-wider text-rose-500">
+                      MISS
+                    </p>
+                    <p className="text-sm text-slate-700">
+                      {item.miss || "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-mint-50 px-3 py-2">
+                    <p className="text-[0.7rem] font-bold uppercase tracking-wider text-mint-600">
+                      NEXT
+                    </p>
+                    <p className="text-sm font-semibold text-mint-800">
+                      {item.next || "—"}
+                    </p>
+                  </div>
+                </div>
+                <span className="rounded-lg bg-rose-50 px-2 py-1 text-[0.7rem] font-bold text-rose-600">
+                  {formatJapaneseDate(item.date)}
+                </span>
+              </div>
+            </div>
+          ))}
+          {missNextHistory.length === 0 && (
+            <p className="rounded-2xl border border-dashed border-rose-100 bg-white/80 p-4 text-center text-sm text-rose-500">
+              まだ MISS / NEXT の記録がありません。Today で入力するとここに一覧表示されます。
+            </p>
+          )}
         </div>
       </section>
 
@@ -297,6 +346,19 @@ function summarize(records: DailyRecord[]) {
     sleepAlerts: alerts,
     rangeLabel: `${first.date} ~ ${last.date}`,
   };
+}
+
+function buildMissNextHistory(records: DailyRecord[]) {
+  return records
+    .flatMap((record) =>
+      (record.missNext ?? []).map((entry) => ({
+        date: record.date,
+        miss: (entry.miss ?? "").trim(),
+        next: (entry.next ?? "").trim(),
+      }))
+    )
+    .filter((item) => item.miss || item.next)
+    .sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : 0));
 }
 
 function buildCorrelations(records: DailyRecord[]) {
