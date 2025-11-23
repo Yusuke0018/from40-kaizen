@@ -1,0 +1,10 @@
+timestamp: 20251123-135804
+branch: main
+head: 73184f4ff75db3a64880770f5d3e56f0389e882a
+lint: ok
+test: not-run (no test suite)
+push: pending
+
+changes:
+ .codexignore | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
