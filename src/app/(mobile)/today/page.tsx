@@ -59,6 +59,47 @@ function normalizeTradeOffs(
   });
 }
 
+function resolveSleepHours(record: DailyRecord) {
+  if (record.sleepHours !== null && record.sleepHours !== undefined) {
+    return record.sleepHours;
+  }
+  return calcSleepHours(record.date, record.sleepStart, record.sleepEnd);
+}
+
+function splitSleepDuration(hours: number | null | undefined) {
+  if (hours === null || hours === undefined || Number.isNaN(hours)) {
+    return { hours: "", minutes: "" };
+  }
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = Math.max(0, totalMinutes - h * 60);
+  return { hours: String(h), minutes: String(m) };
+}
+
+function mergeSleepDuration(hours: string, minutes: string) {
+  const hasHours = hours.trim() !== "";
+  const hasMinutes = minutes.trim() !== "";
+  if (!hasHours && !hasMinutes) return null;
+
+  const h = Number(hours);
+  const m = Number(minutes);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+
+  const clampedMinutes = Math.min(Math.max(m, 0), 59);
+  const safeHours = Math.max(h, 0);
+
+  return Number((safeHours + clampedMinutes / 60).toFixed(2));
+}
+
+function formatSleepDuration(hours: number | null | undefined) {
+  if (hours === null || hours === undefined || Number.isNaN(hours)) return "--";
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes - h * 60;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
 export default function TodayPage() {
   const { user } = useAuthContext();
   const [selectedDate, setSelectedDate] = useState(todayKey());
@@ -72,6 +113,8 @@ export default function TodayPage() {
   const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [canEditMorning, setCanEditMorning] = useState(true);
   const [canEditEvening, setCanEditEvening] = useState(true);
+  const [sleepHoursInput, setSleepHoursInput] = useState("");
+  const [sleepMinutesInput, setSleepMinutesInput] = useState("");
 
   const fetchRecord = useCallback(
     async (date: string) => {
@@ -83,10 +126,13 @@ export default function TodayPage() {
       if (res.status === 404) return null;
       if (!res.ok) throw new Error("Failed to load record");
       const data = (await res.json()) as DailyRecord;
+      const normalizedSleepHours =
+        data.sleepHours ?? calcSleepHours(date, data.sleepStart, data.sleepEnd);
       return {
         ...createEmptyRecord(date),
         ...data,
         date,
+        sleepHours: normalizedSleepHours,
         photoUrls: data.photoUrls ?? [],
         meals: (data as DailyRecord).meals ?? [],
         tradeOffs: normalizeTradeOffs((data as DailyRecord).tradeOffs),
@@ -108,7 +154,11 @@ export default function TodayPage() {
       setErrorMessage(null);
       try {
         const data = await fetchRecord(date);
-        setRecord(data ?? createEmptyRecord(date));
+        const nextRecord = data ?? createEmptyRecord(date);
+        const durationParts = splitSleepDuration(resolveSleepHours(nextRecord));
+        setSleepHoursInput(durationParts.hours);
+        setSleepMinutesInput(durationParts.minutes);
+        setRecord(nextRecord);
         const isNew = !data;
         setCanEditMorning(isNew);
         setCanEditEvening(isNew);
@@ -116,6 +166,8 @@ export default function TodayPage() {
         console.error(err);
         setErrorMessage("既存データの取得に失敗しました。");
         setRecord(createEmptyRecord(date));
+        setSleepHoursInput("");
+        setSleepMinutesInput("");
       } finally {
         setLoading(false);
       }
@@ -152,9 +204,53 @@ export default function TodayPage() {
     void loadGoals();
   }, [user, loadGoals]);
 
-  const computedSleepHours = useMemo(
-    () => calcSleepHours(record.date, record.sleepStart, record.sleepEnd),
-    [record.date, record.sleepStart, record.sleepEnd]
+  const resolvedSleepHours = useMemo(() => resolveSleepHours(record), [record]);
+
+  const sleepDurationDisplay = useMemo(
+    () => formatSleepDuration(resolvedSleepHours),
+    [resolvedSleepHours]
+  );
+
+  const updateSleepDuration = useCallback(
+    (hours: string, minutes: string) => {
+      setSleepHoursInput(hours);
+      setSleepMinutesInput(minutes);
+      setRecord((prev) => ({
+        ...prev,
+        sleepHours: mergeSleepDuration(hours, minutes),
+        sleepStart: null,
+        sleepEnd: null,
+      }));
+    },
+    []
+  );
+
+  const handleSleepHoursChange = useCallback(
+    (value: string) => {
+      if (value === "") {
+        updateSleepDuration("", sleepMinutesInput);
+        return;
+      }
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return;
+      const sanitized = Math.max(0, Math.floor(numeric)).toString();
+      updateSleepDuration(sanitized, sleepMinutesInput);
+    },
+    [sleepMinutesInput, updateSleepDuration]
+  );
+
+  const handleSleepMinutesChange = useCallback(
+    (value: string) => {
+      if (value === "") {
+        updateSleepDuration(sleepHoursInput, "");
+        return;
+      }
+      const numeric = Number(value);
+      if (Number.isNaN(numeric)) return;
+      const sanitized = Math.min(Math.max(numeric, 0), 59).toString();
+      updateSleepDuration(sleepHoursInput, sanitized);
+    },
+    [sleepHoursInput, updateSleepDuration]
   );
 
   async function saveRecord() {
@@ -166,7 +262,7 @@ export default function TodayPage() {
       const token = await user.getIdToken();
       const payload = {
         ...record,
-        sleepHours: computedSleepHours ?? record.sleepHours,
+        sleepHours: resolvedSleepHours,
         date: selectedDate,
       };
       const res = await fetch("/api/records", {
@@ -387,7 +483,7 @@ export default function TodayPage() {
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatTile
           label="SLEEP"
-          value={computedSleepHours ? `${computedSleepHours}h` : "--"}
+          value={sleepDurationDisplay}
           tone="indigo"
         />
         <StatTile
@@ -447,31 +543,53 @@ export default function TodayPage() {
                   睡眠
                 </p>
                 <div className="grid grid-cols-2 gap-4">
-                  <Field
-                    label="就寝時刻"
-                    type="time"
-                    value={record.sleepStart ?? ""}
-                    disabled={!canEditMorning}
-                    onChange={(value) =>
-                      setRecord((prev) => ({
-                        ...prev,
-                        sleepStart: value,
-                      }))
-                    }
-                  />
-                  <Field
-                    label="起床時刻"
-                    type="time"
-                    value={record.sleepEnd ?? ""}
-                    disabled={!canEditMorning}
-                    onChange={(value) =>
-                      setRecord((prev) => ({
-                        ...prev,
-                        sleepEnd: value,
-                      }))
-                    }
-                  />
+                  <label className="block text-left">
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                      睡眠時間 (時間)
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="7"
+                      value={sleepHoursInput}
+                      disabled={!canEditMorning}
+                      onChange={(event) =>
+                        handleSleepHoursChange(event.target.value)
+                      }
+                      className={cn(
+                        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50",
+                        !canEditMorning && "cursor-default bg-slate-50 text-slate-400"
+                      )}
+                    />
+                  </label>
+                  <label className="block text-left">
+                    <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                      睡眠時間 (分)
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="59"
+                      step="1"
+                      inputMode="numeric"
+                      placeholder="30"
+                      value={sleepMinutesInput}
+                      disabled={!canEditMorning}
+                      onChange={(event) =>
+                        handleSleepMinutesChange(event.target.value)
+                      }
+                      className={cn(
+                        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 placeholder:text-slate-300 focus:border-mint-500 focus:ring-2 focus:ring-mint-50",
+                        !canEditMorning && "cursor-default bg-slate-50 text-slate-400"
+                      )}
+                    />
+                  </label>
                 </div>
+                <p className="text-[0.75rem] text-slate-500">
+                  何時間・何分の形式で入力してください（例: 7時間30分なら「7」と「30」）。
+                </p>
                 <Field
                   label="睡眠時平均心拍"
                   type="number"
