@@ -59,6 +59,12 @@ function normalizeTradeOffs(
   });
 }
 
+function previousDateKey(dateKey: string) {
+  const date = new Date(`${dateKey}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
 function resolveSleepHours(record: DailyRecord) {
   if (record.sleepHours !== null && record.sleepHours !== undefined) {
     return record.sleepHours;
@@ -113,6 +119,12 @@ export default function TodayPage() {
   const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [canEditMorning, setCanEditMorning] = useState(true);
   const [canEditEvening, setCanEditEvening] = useState(true);
+  const [carryoverAction, setCarryoverAction] = useState<{
+    date: string;
+    action: string;
+  } | null>(null);
+  const [carryoverError, setCarryoverError] = useState<string | null>(null);
+  const [carryoverLoading, setCarryoverLoading] = useState(false);
   const [sleepHoursInput, setSleepHoursInput] = useState("");
   const [sleepMinutesInput, setSleepMinutesInput] = useState("");
 
@@ -203,6 +215,43 @@ export default function TodayPage() {
     if (!user) return;
     void loadGoals();
   }, [user, loadGoals]);
+
+  const loadCarryoverAction = useCallback(
+    async (date: string) => {
+      if (!user) return;
+      const prevDate = previousDateKey(date);
+      setCarryoverAction(null);
+      setCarryoverLoading(true);
+      setCarryoverError(null);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/records?date=${prevDate}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.status === 404) {
+          setCarryoverAction({ date: prevDate, action: "" });
+          return;
+        }
+        if (!res.ok) throw new Error("Failed to load previous action");
+        const data = (await res.json()) as DailyRecord;
+        setCarryoverAction({
+          date: prevDate,
+          action: data.tomorrowAction ?? "",
+        });
+      } catch (err) {
+        console.error(err);
+        setCarryoverError("前日の明日の一手を取得できませんでした。");
+      } finally {
+        setCarryoverLoading(false);
+      }
+    },
+    [user]
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    void loadCarryoverAction(selectedDate);
+  }, [user, selectedDate, loadCarryoverAction]);
 
   const resolvedSleepHours = useMemo(() => resolveSleepHours(record), [record]);
 
@@ -478,6 +527,54 @@ export default function TodayPage() {
           )}
         </section>
       )}
+
+      <section className="relative overflow-hidden rounded-2xl border-2 border-slate-900 bg-gradient-to-r from-amber-50 via-mint-50 to-sky-50 p-4 shadow-lg shadow-mint-900/10">
+        <div className="pointer-events-none absolute inset-0 opacity-60">
+          <div className="absolute -left-10 -top-10 h-24 w-24 rounded-full bg-amber-200 blur-3xl" />
+          <div className="absolute right-0 top-0 h-24 w-24 rounded-full bg-mint-200 blur-3xl" />
+        </div>
+        <div className="relative flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[0.7rem] font-bold uppercase tracking-[0.28em] text-slate-600">
+              Yesterday&apos;s TMR
+            </p>
+            {carryoverAction?.date && (
+              <span className="rounded-full bg-slate-900 px-3 py-1 text-[0.7rem] font-semibold text-white shadow-sm">
+                {carryoverAction.date}
+              </span>
+            )}
+          </div>
+          {carryoverLoading ? (
+            <p className="text-sm font-semibold text-slate-600">
+              前日の「明日の一手」を読み込み中です…
+            </p>
+          ) : carryoverError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-600">
+              {carryoverError}
+            </p>
+          ) : carryoverAction && carryoverAction.action.trim() !== "" ? (
+            <div className="flex items-start gap-3">
+              <div className="mt-1 h-8 w-8 flex-shrink-0 rounded-full bg-gradient-to-br from-amber-400 to-mint-500 text-slate-900 shadow-md ring-2 ring-white">
+                <div className="flex h-full w-full items-center justify-center font-mono text-sm font-extrabold">
+                  ★
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-900">
+                  {carryoverAction.action}
+                </p>
+                <p className="text-[0.75rem] font-medium text-slate-600">
+                  前日に立てた「明日の一手」です。朝イチで実行しましょう。
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="rounded-lg bg-white/70 px-3 py-2 text-sm font-semibold text-slate-600 ring-1 ring-slate-200">
+              前日は「明日の一手」が未登録です。今夜の振り返りで1つだけ決めてみましょう。
+            </p>
+          )}
+        </div>
+      </section>
 
       {/* スナップショット */}
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
