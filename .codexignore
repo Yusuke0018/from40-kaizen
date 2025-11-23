@@ -1,12 +1,8 @@
-# Exclude large local caches from Codex snapshots
-Library/
-Library/Caches/
-Library/Caches/Google/
-Library/Containers/
-Library/Application Support/
-
-# Downloads - Keyboard Maestro installers / apps (keep but exclude from snapshots)
+# Exclude large app bundles in ~/Downloads from Codex snapshots
 ../Downloads/Keyboard Maestro.app/**
 ../Downloads/Keyboard Maestro 2.app/**
 ../Downloads/Keyboard Maestro 3.app/**
 ../Downloads/keyboardmaestro-*.zip
+../Downloads/Keyboard Maestro.app/Contents/Resources/en.lproj/**
+../Downloads/Keyboard Maestro 2.app/Contents/Resources/en.lproj/**
+../Downloads/Keyboard Maestro 3.app/Contents/Resources/en.lproj/**
