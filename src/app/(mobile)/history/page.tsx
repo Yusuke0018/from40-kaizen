@@ -195,7 +195,7 @@ function GoalHistoryCard({
             <h3 className="text-base font-bold text-slate-900">{goal.text}</h3>
           </div>
           <p className="mt-1 text-xs text-slate-400">
-            {formatDate(goal.startDate)} 〜 {formatDate(goal.endDate)}
+            {formatDate(goal.startDate)} 開始
           </p>
 
           {/* 進捗バー */}

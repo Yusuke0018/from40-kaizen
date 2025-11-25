@@ -17,7 +17,6 @@ export default function SettingsPage() {
 
   const [goalText, setGoalText] = useState("");
   const [goalStartDate, setGoalStartDate] = useState(isoToday());
-  const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(89));
   const [savingGoal, setSavingGoal] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
@@ -75,12 +74,10 @@ export default function SettingsPage() {
             id: editingGoalId,
             text: goalText.trim(),
             startDate: goalStartDate,
-            endDate: goalEndDate,
           }
         : {
             text: goalText.trim(),
             startDate: goalStartDate,
-            endDate: goalEndDate,
           };
 
       const res = await fetch("/api/goals", {
@@ -134,14 +131,12 @@ export default function SettingsPage() {
     setEditingGoalId(goal.id);
     setGoalText(goal.text);
     setGoalStartDate(goal.startDate);
-    setGoalEndDate(goal.endDate);
   }
 
   function resetForm() {
     setEditingGoalId(null);
     setGoalText("");
     setGoalStartDate(isoToday());
-    setGoalEndDate(isoTodayPlusDays(89));
   }
 
   async function handleSignOut() {
@@ -158,7 +153,7 @@ export default function SettingsPage() {
       {/* ヘッダー */}
       <section>
         <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
-          Settings
+          Habits
         </h2>
         <p className="mt-1 text-sm font-medium text-slate-500">
           習慣の管理とアカウント設定
@@ -219,53 +214,33 @@ export default function SettingsPage() {
               />
             </label>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                  開始日
-                </span>
-                <input
-                  type="date"
-                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-mint-500 focus:ring-0"
-                  value={goalStartDate}
-                  onChange={(e) => setGoalStartDate(e.target.value)}
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
-                  終了日
-                </span>
-                <input
-                  type="date"
-                  className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-mint-500 focus:ring-0"
-                  value={goalEndDate}
-                  onChange={(e) => setGoalEndDate(e.target.value)}
-                />
-              </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-slate-500">
+                開始日
+              </span>
+              <input
+                type="date"
+                className="w-full rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 focus:border-mint-500 focus:ring-0"
+                value={goalStartDate}
+                onChange={(e) => setGoalStartDate(e.target.value)}
+              />
+            </label>
+
+            <div className="rounded-xl bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">
+                <span className="font-bold text-amber-600">終了日</span>は90日達成して殿堂入りした時に自動設定されます
+              </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-mint-400 hover:text-mint-600"
-                onClick={() => {
-                  setGoalStartDate(isoToday());
-                  setGoalEndDate(isoTodayPlusDays(89));
-                }}
-              >
-                今日から90日
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-mint-400 hover:text-mint-600"
-                onClick={() => {
-                  setGoalStartDate(isoToday());
-                  setGoalEndDate(isoTodayPlusDays(29));
-                }}
-              >
-                今日から30日
-              </button>
-            </div>
+            <button
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 hover:border-mint-400 hover:text-mint-600"
+              onClick={() => {
+                setGoalStartDate(isoToday());
+              }}
+            >
+              今日から開始
+            </button>
 
             <div className="flex gap-2">
               <button
@@ -327,7 +302,7 @@ export default function SettingsPage() {
               >
                 <p className="font-bold text-slate-900">{goal.text}</p>
                 <p className="mt-1 text-xs text-slate-400">
-                  {formatDate(goal.startDate)} 〜 {formatDate(goal.endDate)}
+                  {formatDate(goal.startDate)} 開始
                 </p>
                 <div className="mt-3 flex items-center gap-2">
                   <div className="flex-1 rounded-full bg-slate-100">
@@ -373,9 +348,16 @@ export default function SettingsPage() {
               {hallOfFameGoals.map((goal) => (
                 <div
                   key={`hof-${goal.id}`}
-                  className="rounded-xl border border-amber-200 bg-white/80 p-3 text-sm font-semibold text-amber-800"
+                  className="rounded-xl border border-amber-200 bg-white/80 p-3"
                 >
-                  {goal.text}
+                  <p className="text-sm font-semibold text-amber-800">
+                    {goal.text}
+                  </p>
+                  {goal.hallOfFameAt && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      殿堂入り: {formatDate(goal.hallOfFameAt)}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -408,20 +390,12 @@ function isoToday() {
   return `${year}-${month}-${day}`;
 }
 
-function isoTodayPlusDays(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatDate(input: string | undefined | null) {
   if (!input) return "-";
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) return input;
   return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
     month: "numeric",
     day: "numeric",
   }).format(date);

@@ -25,10 +25,10 @@ export type Goal = {
   id: string;
   text: string;
   startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  endDate?: string; // 殿堂入り時に自動設定（hallOfFameAtと同じ）
   expireAt?: string;
   createdAt?: string;
-  hallOfFameAt?: string | null;
+  hallOfFameAt?: string | null; // 殿堂入り日（終了日）
   checkedToday?: boolean;
   streak?: number; // 現在の連続達成（2日に1回でもOK）
   totalChecks?: number;

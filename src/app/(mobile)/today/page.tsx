@@ -335,7 +335,7 @@ function HabitCard({
         <div className="flex-1 space-y-2">
           <p className="text-base font-bold text-slate-900">{habit.text}</p>
           <p className="text-xs font-medium text-slate-400">
-            {formatDate(habit.startDate)} 〜 {formatDate(habit.endDate)}
+            {formatDate(habit.startDate)} 開始
           </p>
 
           {/* ストリーク */}

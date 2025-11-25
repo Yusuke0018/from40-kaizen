@@ -3,7 +3,7 @@ import type { DocumentReference } from "firebase-admin/firestore";
 import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
-import { goalSchema, type GoalInput } from "@/lib/schemas/goal";
+import type { GoalInput } from "@/lib/schemas/goal";
 import { todayKey } from "@/lib/date";
 import { getComment } from "@/lib/comments";
 import type { GoalStats, CheckRecord } from "@/types/goal";
@@ -24,20 +24,11 @@ export async function GET(request: Request) {
     const includeHistory = searchParams.get("history") === "true";
 
     const snapshot = await collection.orderBy("startDate", "desc").get();
-    const now = new Date();
 
-    const baseGoals = snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        data: doc.data() as GoalInput & { hallOfFameAt?: string | null },
-      }))
-      .filter(({ data }) => {
-        const rawExpire = data.expireAt;
-        if (!rawExpire || typeof rawExpire !== "string") return true;
-        const expireAt = new Date(rawExpire);
-        if (Number.isNaN(expireAt.getTime())) return true;
-        return expireAt > now;
-      });
+    const baseGoals = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: doc.data() as GoalInput & { hallOfFameAt?: string | null },
+    }));
 
     const enriched = await Promise.all(
       baseGoals.map(async ({ id, data }) => {
@@ -91,36 +82,29 @@ export async function POST(request: Request) {
   try {
     const user = await verifyRequestUser(request);
     const payload = await request.json();
-    const parsed = goalSchema
-      .omit({ expireAt: true, createdAt: true })
+    const parsed = z
+      .object({
+        text: z.string().min(1),
+        startDate: z.string().min(1),
+      })
       .parse(payload);
 
     const start = new Date(parsed.startDate);
-    const end = new Date(parsed.endDate);
 
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime()) ||
-      end < start
-    ) {
+    if (Number.isNaN(start.getTime())) {
       return NextResponse.json(
-        { error: "期間の指定が正しくありません。" },
+        { error: "開始日の指定が正しくありません。" },
         { status: 400 }
       );
     }
 
     const collection = collectionFor(user.uid);
     const snapshot = await collection.get();
-    const now = new Date();
 
     const activeCount = snapshot.docs.filter((doc) => {
       const data = doc.data() as GoalInput & { hallOfFameAt?: string | null };
       if (data.hallOfFameAt) return false;
-      const rawExpire = data.expireAt;
-      if (!rawExpire || typeof rawExpire !== "string") return true;
-      const expireAt = new Date(rawExpire);
-      if (Number.isNaN(expireAt.getTime())) return true;
-      return expireAt > now;
+      return true;
     }).length;
 
     if (activeCount >= MAX_ACTIVE_HABITS) {
@@ -130,16 +114,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const expire = new Date(end);
-    expire.setDate(expire.getDate() + 1);
-
     const timestamp = new Date().toISOString();
 
     const docRef = await collection.add({
       text: parsed.text,
       startDate: parsed.startDate,
-      endDate: parsed.endDate,
-      expireAt: expire.toISOString(),
       createdAt: timestamp,
     });
 
@@ -162,33 +141,23 @@ export async function PUT(request: Request) {
         id: z.string().min(1),
         text: z.string().min(1),
         startDate: z.string().min(1),
-        endDate: z.string().min(1),
       })
       .parse(payload);
 
     const start = new Date(parsed.startDate);
-    const end = new Date(parsed.endDate);
-    if (
-      Number.isNaN(start.getTime()) ||
-      Number.isNaN(end.getTime()) ||
-      end < start
-    ) {
+    if (Number.isNaN(start.getTime())) {
       return NextResponse.json(
-        { error: "期間の指定が正しくありません。" },
+        { error: "開始日の指定が正しくありません。" },
         { status: 400 }
       );
     }
 
-    const expire = new Date(end);
-    expire.setDate(expire.getDate() + 1);
     const goalRef = collectionFor(user.uid).doc(parsed.id);
 
     await goalRef.set(
       {
         text: parsed.text,
         startDate: parsed.startDate,
-        endDate: parsed.endDate,
-        expireAt: expire.toISOString(),
       },
       { merge: true }
     );
