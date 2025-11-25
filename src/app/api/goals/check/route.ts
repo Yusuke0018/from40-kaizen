@@ -107,13 +107,33 @@ export async function POST(request: Request) {
     }
 
     // チェックOFF時はポイント減算
+    let pointsLost = 0;
+    let levelDown = null;
     if (!payload.checked && wasChecked) {
       const userDoc = userDocFor(user.uid);
-      // 最低1ポイント減算（ボーナス分は取り消さない）
-      await userDoc.set(
-        { totalPoints: FieldValue.increment(-1) },
-        { merge: true }
-      );
+      const userSnap = await userDoc.get();
+      const currentPoints = (userSnap.data()?.totalPoints as number) || 0;
+
+      // 最低1ポイント減算（ボーナス分は取り消さない、0未満にはならない）
+      pointsLost = Math.min(1, currentPoints);
+      if (pointsLost > 0) {
+        await userDoc.set(
+          { totalPoints: FieldValue.increment(-pointsLost) },
+          { merge: true }
+        );
+      }
+
+      // レベルダウン判定
+      const levelResult = checkLevelUp(currentPoints, currentPoints - pointsLost);
+      newLevel = levelResult.newLevel;
+      if (levelResult.oldLevel.level > levelResult.newLevel.level) {
+        levelDown = {
+          oldLevel: levelResult.oldLevel.level,
+          newLevel: levelResult.newLevel.level,
+          newTitle: levelResult.newLevel.title,
+          newTitleEn: levelResult.newLevel.titleEn,
+        };
+      }
     }
 
     return NextResponse.json({
@@ -123,7 +143,9 @@ export async function POST(request: Request) {
       isRestart,
       comment,
       pointsEarned,
+      pointsLost,
       levelUp,
+      levelDown,
       level: newLevel,
     });
   } catch (error) {

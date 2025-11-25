@@ -60,6 +60,13 @@ type LevelUpInfo = {
   phase?: string;
 };
 
+type LevelDownInfo = {
+  oldLevel: number;
+  newLevel: number;
+  newTitle: string;
+  newTitleEn: string;
+};
+
 // 節目レベルのフェーズ情報
 const MILESTONE_INFO: Record<number, { emoji: string; message: string; color: string }> = {
   10: { emoji: "🎉", message: "最初の壁突破！", color: "from-amber-400 to-orange-500" },
@@ -79,7 +86,9 @@ export default function TodayPage() {
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
   const [levelUp, setLevelUp] = useState<LevelUpInfo | null>(null);
+  const [levelDown, setLevelDown] = useState<LevelDownInfo | null>(null);
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
+  const [pointsLost, setPointsLost] = useState<number | null>(null);
 
   const currentDateKey = selectedDate === "today" ? todayKey() : yesterdayKey();
 
@@ -170,7 +179,9 @@ export default function TodayPage() {
           hallOfFameAt?: string | null;
           comment?: string;
           pointsEarned?: number;
+          pointsLost?: number;
           levelUp?: LevelUpInfo | null;
+          levelDown?: LevelDownInfo | null;
           level?: UserLevel | null;
         };
 
@@ -207,6 +218,19 @@ export default function TodayPage() {
         if (nextChecked && data.pointsEarned && data.pointsEarned > 0) {
           setPointsEarned(data.pointsEarned);
           setTimeout(() => setPointsEarned(null), 2000);
+        }
+
+        // チェックOFF時の処理
+        if (!nextChecked) {
+          // レベルダウン演出
+          if (data.levelDown) {
+            setLevelDown(data.levelDown);
+          }
+          // ポイント減算表示
+          if (data.pointsLost && data.pointsLost > 0) {
+            setPointsLost(data.pointsLost);
+            setTimeout(() => setPointsLost(null), 2000);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -402,12 +426,63 @@ export default function TodayPage() {
         </div>
       )}
 
+      {/* Level Down Modal */}
+      {levelDown && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-fade-in"
+            onClick={() => setLevelDown(null)}
+          />
+          <div className="relative animate-popup-in">
+            <div className="glass-card relative overflow-hidden rounded-3xl p-8 shadow-2xl shadow-slate-500/30">
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-slate-400/20 to-slate-500/20 blur-3xl" />
+
+              <div className="relative flex flex-col items-center text-center">
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 shadow-xl animate-bounce-in">
+                  <TrendingUp className="h-10 w-10 text-white rotate-180" />
+                </div>
+
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-slate-500">
+                  Level Down
+                </p>
+
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="text-2xl font-bold text-slate-500">LV.{levelDown.oldLevel}</span>
+                  <TrendingUp className="h-6 w-6 text-slate-400 rotate-180" />
+                  <span className="text-4xl font-black text-slate-600">LV.{levelDown.newLevel}</span>
+                </div>
+
+                <div className="mb-2 rounded-full bg-slate-100 px-6 py-2">
+                  <p className="text-lg font-bold text-slate-700">{levelDown.newTitle}</p>
+                </div>
+                <p className="text-sm font-medium text-slate-400">{levelDown.newTitleEn}</p>
+
+                <p className="mt-4 text-xs text-slate-400">
+                  タップして閉じる
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Points Earned Toast */}
       {pointsEarned && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 animate-popup-in">
           <div className="glass-card rounded-full px-4 py-2 shadow-lg">
             <p className="text-sm font-bold text-amber-600">
               +{pointsEarned} pt
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Points Lost Toast */}
+      {pointsLost && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 animate-popup-in">
+          <div className="glass-card rounded-full px-4 py-2 shadow-lg border border-slate-200">
+            <p className="text-sm font-bold text-slate-500">
+              -{pointsLost} pt
             </p>
           </div>
         </div>
