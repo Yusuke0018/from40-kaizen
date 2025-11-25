@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Sun, History } from "lucide-react";
+import { ListChecks, Sun, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -18,8 +18,8 @@ const NAV_ITEMS = [
   },
   {
     href: "/settings",
-    label: "Settings",
-    icon: Settings,
+    label: "Habits",
+    icon: ListChecks,
   },
 ];
 
