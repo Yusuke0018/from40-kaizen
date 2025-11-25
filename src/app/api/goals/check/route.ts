@@ -99,6 +99,8 @@ export async function POST(request: Request) {
           newLevel: levelResult.newLevel.level,
           newTitle: levelResult.newLevel.title,
           newTitleEn: levelResult.newLevel.titleEn,
+          isMilestone: levelResult.newLevel.isMilestone,
+          phase: levelResult.newLevel.phase,
         };
       }
       newLevel = levelResult.newLevel;

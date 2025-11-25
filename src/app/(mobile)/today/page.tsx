@@ -56,6 +56,17 @@ type LevelUpInfo = {
   newLevel: number;
   newTitle: string;
   newTitleEn: string;
+  isMilestone?: boolean;
+  phase?: string;
+};
+
+// 節目レベルのフェーズ情報
+const MILESTONE_INFO: Record<number, { emoji: string; message: string; color: string }> = {
+  10: { emoji: "🎉", message: "最初の壁突破！", color: "from-amber-400 to-orange-500" },
+  20: { emoji: "⚔️", message: "中級者の仲間入り！", color: "from-cyan-400 to-blue-500" },
+  30: { emoji: "👑", message: "人間界の頂点！", color: "from-purple-400 to-pink-500" },
+  40: { emoji: "☀️", message: "神話級の存在！", color: "from-amber-300 to-red-500" },
+  50: { emoji: "🌟", message: "ご機嫌の極み！", color: "from-yellow-300 via-amber-400 to-orange-500" },
 };
 
 export default function TodayPage() {
@@ -231,36 +242,119 @@ export default function TodayPage() {
             className="absolute inset-0 bg-slate-900/50 backdrop-blur-md animate-fade-in"
             onClick={() => setLevelUp(null)}
           />
+          {/* 節目レベルの特別演出 */}
+          {levelUp.isMilestone && MILESTONE_INFO[levelUp.newLevel] && (
+            <>
+              {/* 花火エフェクト */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                <div className="absolute top-10 left-10 w-4 h-4 rounded-full bg-yellow-400 animate-firework-1" />
+                <div className="absolute top-20 right-16 w-3 h-3 rounded-full bg-pink-400 animate-firework-2" />
+                <div className="absolute top-32 left-1/4 w-5 h-5 rounded-full bg-cyan-400 animate-firework-3" />
+                <div className="absolute bottom-40 right-10 w-4 h-4 rounded-full bg-amber-400 animate-firework-1" />
+                <div className="absolute bottom-32 left-16 w-3 h-3 rounded-full bg-purple-400 animate-firework-2" />
+                <div className="absolute top-1/3 right-1/4 w-4 h-4 rounded-full bg-emerald-400 animate-firework-3" />
+              </div>
+              {/* 光の放射エフェクト */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                <div className="w-80 h-80 rounded-full bg-gradient-to-r from-amber-400/0 via-yellow-400/30 to-amber-400/0 animate-spin-slow" />
+              </div>
+            </>
+          )}
           <div className="relative animate-popup-in">
-            <div className="glass-card relative overflow-hidden rounded-3xl p-8 shadow-2xl shadow-amber-500/30">
+            <div className={cn(
+              "glass-card relative overflow-hidden rounded-3xl p-8 shadow-2xl",
+              levelUp.isMilestone ? "shadow-amber-500/50" : "shadow-amber-500/30"
+            )}>
               {/* Particle effects */}
               <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-400/40 to-yellow-400/40 blur-3xl animate-pulse-soft" />
-                <div className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-gradient-to-br from-orange-400/30 to-amber-400/30 blur-2xl animate-pulse-soft" />
-                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-40 w-40 rounded-full bg-gradient-to-br from-yellow-300/20 to-amber-300/20 blur-3xl animate-glow" />
+                <div className={cn(
+                  "absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl animate-pulse-soft",
+                  levelUp.isMilestone
+                    ? `bg-gradient-to-br ${MILESTONE_INFO[levelUp.newLevel]?.color || "from-amber-400/40 to-yellow-400/40"} opacity-60`
+                    : "bg-gradient-to-br from-amber-400/40 to-yellow-400/40"
+                )} />
+                <div className={cn(
+                  "absolute -bottom-10 -left-10 h-28 w-28 rounded-full blur-2xl animate-pulse-soft",
+                  levelUp.isMilestone
+                    ? `bg-gradient-to-br ${MILESTONE_INFO[levelUp.newLevel]?.color || "from-orange-400/30 to-amber-400/30"} opacity-50`
+                    : "bg-gradient-to-br from-orange-400/30 to-amber-400/30"
+                )} />
+                <div className={cn(
+                  "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-40 w-40 rounded-full blur-3xl",
+                  levelUp.isMilestone ? "animate-glow-strong" : "animate-glow",
+                  levelUp.isMilestone
+                    ? `bg-gradient-to-br ${MILESTONE_INFO[levelUp.newLevel]?.color || "from-yellow-300/20 to-amber-300/20"} opacity-40`
+                    : "bg-gradient-to-br from-yellow-300/20 to-amber-300/20"
+                )} />
               </div>
 
               <div className="relative flex flex-col items-center text-center">
-                {/* Crown Icon */}
-                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-500 shadow-xl shadow-amber-500/40 animate-bounce-in">
-                  <Crown className="h-10 w-10 text-white" />
+                {/* Milestone Badge */}
+                {levelUp.isMilestone && MILESTONE_INFO[levelUp.newLevel] && (
+                  <div className="mb-2 animate-bounce-slow">
+                    <span className="text-4xl">{MILESTONE_INFO[levelUp.newLevel].emoji}</span>
+                  </div>
+                )}
+
+                {/* Crown/Icon */}
+                <div className={cn(
+                  "mb-4 flex items-center justify-center rounded-2xl shadow-xl animate-bounce-in",
+                  levelUp.isMilestone ? "h-24 w-24" : "h-20 w-20",
+                  levelUp.isMilestone && MILESTONE_INFO[levelUp.newLevel]
+                    ? `bg-gradient-to-br ${MILESTONE_INFO[levelUp.newLevel].color} shadow-current/40`
+                    : "bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-500 shadow-amber-500/40"
+                )}>
+                  <Crown className={cn(
+                    "text-white",
+                    levelUp.isMilestone ? "h-12 w-12" : "h-10 w-10"
+                  )} />
                 </div>
 
                 {/* Level Up Text */}
-                <p className="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-amber-600 animate-fade-in">
-                  Level Up!
+                <p className={cn(
+                  "mb-1 font-bold uppercase tracking-[0.3em] animate-fade-in",
+                  levelUp.isMilestone ? "text-sm text-amber-500" : "text-xs text-amber-600"
+                )}>
+                  {levelUp.isMilestone ? "🎊 MILESTONE REACHED! 🎊" : "Level Up!"}
                 </p>
+
+                {/* Milestone Message */}
+                {levelUp.isMilestone && MILESTONE_INFO[levelUp.newLevel] && (
+                  <p className="mb-2 text-lg font-bold text-slate-700 animate-fade-in">
+                    {MILESTONE_INFO[levelUp.newLevel].message}
+                  </p>
+                )}
+
+                {/* Phase Badge */}
+                {levelUp.phase && (
+                  <div className="mb-2 rounded-full bg-slate-100 px-3 py-1">
+                    <p className="text-xs font-semibold text-slate-500">{levelUp.phase}</p>
+                  </div>
+                )}
 
                 {/* Level Numbers */}
                 <div className="mb-3 flex items-center gap-3">
                   <span className="text-2xl font-bold text-slate-400">LV.{levelUp.oldLevel}</span>
-                  <TrendingUp className="h-6 w-6 text-amber-500" />
-                  <span className="text-4xl font-black gradient-text-gold">LV.{levelUp.newLevel}</span>
+                  <TrendingUp className={cn(
+                    levelUp.isMilestone ? "h-8 w-8 text-amber-400" : "h-6 w-6 text-amber-500"
+                  )} />
+                  <span className={cn(
+                    "font-black gradient-text-gold",
+                    levelUp.isMilestone ? "text-5xl" : "text-4xl"
+                  )}>LV.{levelUp.newLevel}</span>
                 </div>
 
                 {/* New Title */}
-                <div className="mb-2 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 px-6 py-2">
-                  <p className="text-lg font-bold text-amber-800">{levelUp.newTitle}</p>
+                <div className={cn(
+                  "mb-2 rounded-full px-6 py-2",
+                  levelUp.isMilestone
+                    ? `bg-gradient-to-r ${MILESTONE_INFO[levelUp.newLevel]?.color || "from-amber-100 to-yellow-100"} bg-opacity-20`
+                    : "bg-gradient-to-r from-amber-100 to-yellow-100"
+                )}>
+                  <p className={cn(
+                    "font-bold",
+                    levelUp.isMilestone ? "text-xl text-white drop-shadow-md" : "text-lg text-amber-800"
+                  )}>{levelUp.newTitle}</p>
                 </div>
                 <p className="text-sm font-medium text-slate-500">{levelUp.newTitleEn}</p>
 
