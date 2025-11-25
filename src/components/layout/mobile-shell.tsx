@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, Sun } from "lucide-react";
+import { Settings, Sun, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -10,6 +10,11 @@ const NAV_ITEMS = [
     href: "/today",
     label: "Today",
     icon: Sun,
+  },
+  {
+    href: "/history",
+    label: "History",
+    icon: History,
   },
   {
     href: "/settings",
@@ -88,7 +93,7 @@ function BottomNav({ pathname }: { pathname: string }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center rounded-xl px-8 py-3 transition-all",
+                "flex flex-col items-center justify-center rounded-xl px-5 py-3 transition-all",
                 active
                   ? "bg-mint-50 text-mint-700"
                   : "text-slate-400 hover:bg-slate-50 hover:text-slate-600"
