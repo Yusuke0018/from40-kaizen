@@ -4,14 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, MessageCircle, Sparkles, Trophy, Zap, Star, Flame } from "lucide-react";
+import { AlertTriangle, MessageCircle, Sparkles, Trophy, Zap, Star, Flame, Moon, ChevronLeft, ChevronRight } from "lucide-react";
+
+function getDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function todayKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = `${now.getMonth() + 1}`.padStart(2, "0");
-  const day = `${now.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return getDateKey(new Date());
+}
+
+function yesterdayKey() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return getDateKey(yesterday);
 }
 
 function formatDate(input: string | null | undefined) {
@@ -24,13 +33,33 @@ function formatDate(input: string | null | undefined) {
   }).format(date);
 }
 
+function formatDateWithWeekday(input: string) {
+  const date = new Date(input);
+  if (Number.isNaN(date.getTime())) return input;
+  const formatted = new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+  }).format(date);
+  const weekday = new Intl.DateTimeFormat("ja-JP", {
+    weekday: "short",
+  }).format(date);
+  return `${formatted} (${weekday})`;
+}
+
+type GoalWithYesterday = Goal & {
+  checkedYesterday?: boolean;
+};
+
 export default function TodayPage() {
   const { user } = useAuthContext();
-  const [goals, setGoals] = useState<Goal[]>([]);
+  const [goals, setGoals] = useState<GoalWithYesterday[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [showComment, setShowComment] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
+
+  const currentDateKey = selectedDate === "today" ? todayKey() : yesterdayKey();
 
   const loadGoals = useCallback(async () => {
     if (!user) return;
@@ -38,13 +67,14 @@ export default function TodayPage() {
     setError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/goals?date=${todayKey()}`, {
+      // 今日と昨日の両方のデータを取得
+      const res = await fetch(`/api/goals?date=${todayKey()}&includeYesterday=true`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
         throw new Error("Failed to load goals");
       }
-      const data = (await res.json()) as Goal[];
+      const data = (await res.json()) as GoalWithYesterday[];
       setGoals(data);
     } catch (err) {
       console.error(err);
@@ -60,18 +90,21 @@ export default function TodayPage() {
   }, [user, loadGoals]);
 
   const handleHabitCheck = useCallback(
-    async (goalId: string, nextChecked: boolean) => {
+    async (goalId: string, nextChecked: boolean, dateKey: string) => {
       if (!user) return;
       if (habitLoading[goalId]) return;
       setError(null);
       setHabitLoading((prev) => ({ ...prev, [goalId]: true }));
 
+      const isToday = dateKey === todayKey();
+      const checkField = isToday ? "checkedToday" : "checkedYesterday";
+
       let previousChecked = false;
       setGoals((prev) =>
         prev.map((habit) => {
           if (habit.id === goalId) {
-            previousChecked = habit.checkedToday ?? false;
-            return { ...habit, checkedToday: nextChecked };
+            previousChecked = (isToday ? habit.checkedToday : habit.checkedYesterday) ?? false;
+            return { ...habit, [checkField]: nextChecked };
           }
           return habit;
         })
@@ -87,7 +120,7 @@ export default function TodayPage() {
           },
           body: JSON.stringify({
             goalId,
-            date: todayKey(),
+            date: dateKey,
             checked: nextChecked,
           }),
         });
@@ -105,7 +138,7 @@ export default function TodayPage() {
             habit.id === goalId
               ? {
                   ...habit,
-                  checkedToday: nextChecked,
+                  [checkField]: nextChecked,
                   streak: data.streak ?? habit.streak ?? 0,
                   hallOfFameAt: data.hallOfFameAt ?? habit.hallOfFameAt ?? null,
                   isHallOfFame: Boolean(data.hallOfFameAt ?? habit.hallOfFameAt),
@@ -125,7 +158,7 @@ export default function TodayPage() {
         setError("チェックの更新に失敗しました。");
         setGoals((prev) =>
           prev.map((habit) =>
-            habit.id === goalId ? { ...habit, checkedToday: previousChecked } : habit
+            habit.id === goalId ? { ...habit, [checkField]: previousChecked } : habit
           )
         );
       }
@@ -140,7 +173,10 @@ export default function TodayPage() {
 
   const activeHabits = goals.filter((g) => !g.isHallOfFame);
   const hallOfFameHabits = goals.filter((g) => g.isHallOfFame);
-  const completedCount = activeHabits.filter((h) => h.checkedToday).length;
+  const isToday = selectedDate === "today";
+  const completedCount = activeHabits.filter((h) =>
+    isToday ? h.checkedToday : h.checkedYesterday
+  ).length;
 
   return (
     <div className="space-y-6 pb-20">
@@ -159,24 +195,82 @@ export default function TodayPage() {
       )}
 
       {/* ヘッダー */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 p-6 text-white shadow-xl">
+      <section className={cn(
+        "relative overflow-hidden rounded-3xl p-6 text-white shadow-xl",
+        isToday
+          ? "bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700"
+          : "bg-gradient-to-br from-indigo-600 via-blue-600 to-slate-700"
+      )}>
         <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -bottom-4 -left-4 h-24 w-24 rounded-full bg-pink-500/20 blur-xl" />
         <div className="relative">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-amber-300" />
+            {isToday ? (
+              <Sparkles className="h-6 w-6 text-amber-300" />
+            ) : (
+              <Moon className="h-6 w-6 text-sky-300" />
+            )}
             <h2 className="text-2xl font-extrabold tracking-tight">
-              Today&apos;s Habits
+              {isToday ? "Today's Habits" : "昨日の習慣"}
             </h2>
           </div>
           <p className="mt-2 text-sm font-medium text-white/80">
-            毎日チェックして習慣を形成しましょう
+            {isToday ? "毎日チェックして習慣を形成しましょう" : "寝る前の習慣を記録しましょう"}
           </p>
           <p className="mt-1 text-xs font-semibold text-white/60">
-            {formatDate(todayKey())}
+            {formatDateWithWeekday(currentDateKey)}
           </p>
         </div>
       </section>
+
+      {/* 日付切り替え */}
+      <section className="flex items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSelectedDate("yesterday")}
+          className={cn(
+            "flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all",
+            selectedDate === "yesterday"
+              ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-lg"
+              : "bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+          )}
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <Moon className="h-4 w-4" />
+          昨日
+        </button>
+        <button
+          type="button"
+          onClick={() => setSelectedDate("today")}
+          className={cn(
+            "flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition-all",
+            selectedDate === "today"
+              ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg"
+              : "bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+          )}
+        >
+          <Sparkles className="h-4 w-4" />
+          今日
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </section>
+
+      {/* 昨日の説明 */}
+      {selectedDate === "yesterday" && (
+        <section className="rounded-2xl bg-gradient-to-r from-indigo-50 to-blue-50 p-4 ring-1 ring-indigo-200">
+          <div className="flex items-start gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400 to-blue-500">
+              <Moon className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-indigo-700">寝る前の習慣を翌日に記録</p>
+              <p className="mt-1 text-xs text-indigo-600/80">
+                昨晩の習慣をまだチェックしていない場合はここで記録できます
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 進捗サマリー */}
       <section className="relative overflow-hidden rounded-3xl bg-white p-6 shadow-lg ring-1 ring-slate-900/5">
@@ -184,7 +278,7 @@ export default function TodayPage() {
         <div className="relative flex items-center justify-between">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Today&apos;s Progress
+              {isToday ? "Today's Progress" : "Yesterday's Progress"}
             </p>
             <p className="mt-2 text-4xl font-black text-slate-900">
               <span className="gradient-text-primary">{completedCount}</span>
@@ -207,7 +301,7 @@ export default function TodayPage() {
           <div className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-50 to-mint-50 px-4 py-3">
             <Star className="h-5 w-5 text-amber-500" />
             <p className="text-sm font-bold text-emerald-700">
-              今日の習慣をすべて達成しました！
+              {isToday ? "今日の習慣をすべて達成しました！" : "昨日の習慣をすべて記録しました！"}
             </p>
           </div>
         )}
@@ -266,11 +360,17 @@ export default function TodayPage() {
       {!loading && activeHabits.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="h-1 w-1 rounded-full bg-violet-500" />
+            <div className={cn(
+              "h-1 w-1 rounded-full",
+              isToday ? "bg-violet-500" : "bg-indigo-500"
+            )} />
             <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
               Active Habits
             </p>
-            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-600">
+            <span className={cn(
+              "rounded-full px-2 py-0.5 text-xs font-bold",
+              isToday ? "bg-violet-100 text-violet-600" : "bg-indigo-100 text-indigo-600"
+            )}>
               {activeHabits.length}/3
             </span>
           </div>
@@ -279,6 +379,8 @@ export default function TodayPage() {
               key={habit.id}
               habit={habit}
               index={index}
+              isToday={isToday}
+              currentDateKey={currentDateKey}
               onToggle={handleHabitCheck}
               loading={habitLoading[habit.id]}
             />
@@ -341,19 +443,23 @@ const CARD_COLORS = [
 function HabitCard({
   habit,
   index,
+  isToday,
+  currentDateKey,
   onToggle,
   loading,
 }: {
-  habit: Goal;
+  habit: GoalWithYesterday;
   index: number;
-  onToggle: (goalId: string, nextChecked: boolean) => void;
+  isToday: boolean;
+  currentDateKey: string;
+  onToggle: (goalId: string, nextChecked: boolean, dateKey: string) => void;
   loading?: boolean;
 }) {
-  const checked = habit.checkedToday ?? false;
+  const checked = isToday ? (habit.checkedToday ?? false) : (habit.checkedYesterday ?? false);
   const streak = habit.streak ?? 0;
   const progress = Math.min(90, streak);
   const daysSinceLastCheck = habit.daysSinceLastCheck ?? 0;
-  const showWarning = !checked && daysSinceLastCheck === 2;
+  const showWarning = isToday && !checked && daysSinceLastCheck === 2;
   const colors = CARD_COLORS[index % CARD_COLORS.length];
 
   return (
@@ -382,7 +488,7 @@ function HabitCard({
           colors.check
         )}>
           <div className="flex items-center gap-1">
-            <Sparkles className="h-3 w-3" />
+            {isToday ? <Sparkles className="h-3 w-3" /> : <Moon className="h-3 w-3" />}
             DONE
           </div>
         </div>
@@ -401,7 +507,7 @@ function HabitCard({
         <button
           type="button"
           disabled={loading}
-          onClick={() => onToggle(habit.id, !checked)}
+          onClick={() => onToggle(habit.id, !checked, currentDateKey)}
           className={cn(
             "flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl text-2xl font-extrabold transition-all",
             checked

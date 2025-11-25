@@ -4,7 +4,7 @@ import { z } from "zod";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import type { GoalInput } from "@/lib/schemas/goal";
-import { todayKey } from "@/lib/date";
+import { todayKey, yesterdayKey } from "@/lib/date";
 import { getComment } from "@/lib/comments";
 import type { GoalStats, CheckRecord } from "@/types/goal";
 
@@ -22,6 +22,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get("date") ?? todayKey();
     const includeHistory = searchParams.get("history") === "true";
+    const includeYesterday = searchParams.get("includeYesterday") === "true";
+    const yesterday = yesterdayKey();
 
     const snapshot = await collection.orderBy("startDate", "desc").get();
 
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
           collection.doc(id),
           dateParam,
           data.startDate,
-          includeHistory
+          includeHistory || includeYesterday // 昨日のチェックが必要な場合もchecksを取得
         );
 
         const isHallOfFame = Boolean(data.hallOfFameAt);
@@ -51,6 +53,11 @@ export async function GET(request: Request) {
           isWarning: result.daysSinceLastCheck === 2,
         });
 
+        // 昨日チェック済みかどうか判定
+        const checkedYesterday = includeYesterday && result.checks
+          ? result.checks.some((c) => c.date === yesterday && c.checked)
+          : undefined;
+
         return {
           id,
           ...data,
@@ -63,6 +70,7 @@ export async function GET(request: Request) {
           comment,
           isRestart,
           daysSinceLastCheck: result.daysSinceLastCheck,
+          ...(includeYesterday ? { checkedYesterday } : {}),
           ...(includeHistory ? { checks: result.checks } : {}),
         };
       })
