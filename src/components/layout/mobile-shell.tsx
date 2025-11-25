@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ListChecks, Sun, History, Sparkles } from "lucide-react";
+import { ListChecks, Sun, History, Sparkles, BarChart3, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -14,6 +14,24 @@ const NAV_ITEMS = [
     activeBg: "bg-cyan-50/80",
     activeText: "text-cyan-700",
     activeRing: "ring-cyan-200/50",
+  },
+  {
+    href: "/summary",
+    label: "Summary",
+    icon: BarChart3,
+    activeGradient: "from-purple-500 to-pink-500",
+    activeBg: "bg-purple-50/80",
+    activeText: "text-purple-700",
+    activeRing: "ring-purple-200/50",
+  },
+  {
+    href: "/stats",
+    label: "Stats",
+    icon: Activity,
+    activeGradient: "from-indigo-500 to-violet-500",
+    activeBg: "bg-indigo-50/80",
+    activeText: "text-indigo-700",
+    activeRing: "ring-indigo-200/50",
   },
   {
     href: "/history",
@@ -102,8 +120,8 @@ export function MobileShell({ children }: MobileShellProps) {
 
 function BottomNav({ pathname }: { pathname: string }) {
   return (
-    <nav className="pointer-events-none fixed bottom-6 left-0 right-0 z-30 flex justify-center md:hidden">
-      <div className="pointer-events-auto flex items-center gap-1 rounded-3xl glass-nav p-2 shadow-2xl shadow-slate-900/10 ring-1 ring-white/50">
+    <nav className="pointer-events-none fixed bottom-4 left-0 right-0 z-30 flex justify-center md:hidden">
+      <div className="pointer-events-auto flex items-center gap-0.5 rounded-2xl glass-nav px-1.5 py-1.5 shadow-2xl shadow-slate-900/10 ring-1 ring-white/50">
         {NAV_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href);
           return (
@@ -111,7 +129,7 @@ function BottomNav({ pathname }: { pathname: string }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center rounded-2xl px-5 py-2.5 transition-all",
+                "relative flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5 transition-all",
                 active
                   ? `${item.activeBg} backdrop-blur-sm`
                   : "text-slate-400 hover:bg-white/50"
@@ -119,26 +137,26 @@ function BottomNav({ pathname }: { pathname: string }) {
             >
               {active && (
                 <div className={cn(
-                  "absolute inset-0 rounded-2xl bg-gradient-to-br opacity-15",
+                  "absolute inset-0 rounded-xl bg-gradient-to-br opacity-15",
                   item.activeGradient
                 )} />
               )}
               <div className={cn(
-                "relative flex h-9 w-9 items-center justify-center rounded-xl transition-all",
+                "relative flex h-7 w-7 items-center justify-center rounded-lg transition-all",
                 active
-                  ? `bg-gradient-to-br ${item.activeGradient} shadow-lg shadow-current/30`
+                  ? `bg-gradient-to-br ${item.activeGradient} shadow-md shadow-current/30`
                   : ""
               )}>
                 <item.icon
                   className={cn(
-                    "h-5 w-5",
+                    "h-4 w-4",
                     active ? "text-white" : "text-slate-400"
                   )}
                   strokeWidth={active ? 2.5 : 2}
                 />
               </div>
               <span className={cn(
-                "mt-1 text-[0.6rem] font-bold",
+                "mt-0.5 text-[0.55rem] font-bold",
                 active ? item.activeText : "text-slate-400"
               )}>
                 {item.label}
