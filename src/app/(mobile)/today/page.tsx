@@ -178,15 +178,42 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-5 pb-20">
-      {/* Comment Popup */}
+      {/* Comment Popup Modal */}
       {showComment && (
-        <div className="fixed inset-x-4 top-20 z-50 mx-auto max-w-md">
-          <div className="glass-card animate-float rounded-2xl p-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500">
-                <MessageCircle className="h-5 w-5 text-white" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm animate-fade-in"
+            onClick={() => setShowComment(null)}
+          />
+          {/* Modal */}
+          <div className="relative animate-popup-in">
+            <div className="glass-card relative overflow-hidden rounded-3xl p-6 shadow-2xl shadow-teal-500/20">
+              {/* Decorative elements */}
+              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-teal-400/30 to-emerald-400/30 blur-2xl" />
+              <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-gradient-to-br from-cyan-400/25 to-teal-400/25 blur-xl" />
+
+              <div className="relative flex flex-col items-center text-center">
+                {/* Icon */}
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 shadow-lg shadow-teal-500/30 animate-bounce-in">
+                  <Sparkles className="h-8 w-8 text-white" />
+                </div>
+
+                {/* Title */}
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-teal-600">
+                  Great Job!
+                </p>
+
+                {/* Comment */}
+                <p className="text-base font-bold text-slate-700 leading-relaxed">
+                  {showComment}
+                </p>
+
+                {/* Close hint */}
+                <p className="mt-4 text-xs text-slate-400">
+                  タップして閉じる
+                </p>
               </div>
-              <p className="flex-1 text-sm font-semibold text-slate-700">{showComment}</p>
             </div>
           </div>
         </div>
@@ -560,20 +587,6 @@ function HabitCard({
               />
             </div>
           </div>
-
-          {/* Comment */}
-          {habit.comment && (
-            <div className={cn(
-              "rounded-lg px-3 py-2",
-              habit.isRestart
-                ? "bg-sky-50/80 text-sky-700"
-                : streak >= 7
-                ? "bg-teal-50/80 text-teal-700"
-                : "bg-slate-50/80 text-slate-600"
-            )}>
-              <p className="text-xs font-medium">{habit.comment}</p>
-            </div>
-          )}
 
           {/* Warning Message */}
           {showWarning && (
