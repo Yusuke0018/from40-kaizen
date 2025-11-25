@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
-import type { Goal } from "@/types/goal";
-import { LogOut, Pencil, Plus, Trash2, User } from "lucide-react";
+import type { Goal, FrequencyType } from "@/types/goal";
+import { LogOut, Pencil, Plus, Trash2, User, History } from "lucide-react";
+import Link from "next/link";
 
 const MAX_HABITS = 3;
 
@@ -18,6 +19,8 @@ export default function SettingsPage() {
   const [goalText, setGoalText] = useState("");
   const [goalStartDate, setGoalStartDate] = useState(isoToday());
   const [goalEndDate, setGoalEndDate] = useState(isoTodayPlusDays(89));
+  const [goalFrequency, setGoalFrequency] = useState<FrequencyType>("daily");
+  const [goalWeeklyTarget, setGoalWeeklyTarget] = useState(2);
   const [savingGoal, setSavingGoal] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
@@ -70,18 +73,16 @@ export default function SettingsPage() {
     try {
       const token = await user.getIdToken();
       const method = editingGoalId ? "PUT" : "POST";
+      const baseBody = {
+        text: goalText.trim(),
+        startDate: goalStartDate,
+        endDate: goalEndDate,
+        frequency: goalFrequency,
+        ...(goalFrequency === "weekly" && { weeklyTarget: goalWeeklyTarget }),
+      };
       const body = editingGoalId
-        ? {
-            id: editingGoalId,
-            text: goalText.trim(),
-            startDate: goalStartDate,
-            endDate: goalEndDate,
-          }
-        : {
-            text: goalText.trim(),
-            startDate: goalStartDate,
-            endDate: goalEndDate,
-          };
+        ? { id: editingGoalId, ...baseBody }
+        : baseBody;
 
       const res = await fetch("/api/goals", {
         method,
@@ -135,6 +136,8 @@ export default function SettingsPage() {
     setGoalText(goal.text);
     setGoalStartDate(goal.startDate);
     setGoalEndDate(goal.endDate);
+    setGoalFrequency(goal.frequency ?? "daily");
+    setGoalWeeklyTarget(goal.weeklyTarget ?? 2);
   }
 
   function resetForm() {
@@ -142,6 +145,8 @@ export default function SettingsPage() {
     setGoalText("");
     setGoalStartDate(isoToday());
     setGoalEndDate(isoTodayPlusDays(89));
+    setGoalFrequency("daily");
+    setGoalWeeklyTarget(2);
   }
 
   async function handleSignOut() {
@@ -218,6 +223,60 @@ export default function SettingsPage() {
                 onChange={(e) => setGoalText(e.target.value)}
               />
             </label>
+
+            {/* 頻度設定 */}
+            <div className="space-y-3">
+              <span className="block text-xs font-bold uppercase tracking-wide text-slate-500">
+                頻度
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGoalFrequency("daily")}
+                  className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${
+                    goalFrequency === "daily"
+                      ? "border-mint-500 bg-mint-50 text-mint-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-mint-300"
+                  }`}
+                >
+                  毎日
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGoalFrequency("weekly")}
+                  className={`flex-1 rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${
+                    goalFrequency === "weekly"
+                      ? "border-mint-500 bg-mint-50 text-mint-700"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-mint-300"
+                  }`}
+                >
+                  週N回
+                </button>
+              </div>
+              {goalFrequency === "weekly" && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-slate-600">
+                    週に
+                  </span>
+                  <select
+                    value={goalWeeklyTarget}
+                    onChange={(e) =>
+                      setGoalWeeklyTarget(Number(e.target.value))
+                    }
+                    className="rounded-xl border-2 border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-900 focus:border-mint-500 focus:ring-0"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm font-medium text-slate-600">
+                    回達成で継続
+                  </span>
+                </div>
+              )}
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block">
@@ -325,10 +384,19 @@ export default function SettingsPage() {
                 key={goal.id}
                 className="rounded-2xl border-2 border-slate-900 bg-white p-4 shadow-md"
               >
-                <p className="font-bold text-slate-900">{goal.text}</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  {formatDate(goal.startDate)} 〜 {formatDate(goal.endDate)}
-                </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900">{goal.text}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {formatDate(goal.startDate)} 〜 {formatDate(goal.endDate)}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">
+                    {goal.frequency === "weekly"
+                      ? `週${goal.weeklyTarget}回`
+                      : "毎日"}
+                  </span>
+                </div>
                 <div className="mt-3 flex items-center gap-2">
                   <div className="flex-1 rounded-full bg-slate-100">
                     <div
@@ -342,7 +410,19 @@ export default function SettingsPage() {
                     {goal.streak ?? 0}/90
                   </span>
                 </div>
+                {goal.frequency === "weekly" &&
+                  goal.currentWeekChecks !== undefined && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      今週: {goal.currentWeekChecks}/{goal.weeklyTarget}回達成
+                    </p>
+                  )}
                 <div className="mt-3 flex gap-2">
+                  <Link
+                    href={`/habit/${goal.id}`}
+                    className="flex items-center gap-1 rounded-lg border border-mint-200 bg-mint-50 px-3 py-1.5 text-xs font-bold text-mint-600 hover:bg-mint-100"
+                  >
+                    <History className="h-3 w-3" /> 履歴
+                  </Link>
                   <button
                     type="button"
                     onClick={() => startEdit(goal)}

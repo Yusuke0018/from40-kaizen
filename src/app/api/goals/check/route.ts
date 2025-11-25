@@ -4,6 +4,7 @@ import type { DocumentReference } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { todayKey } from "@/lib/date";
+import type { FrequencyType } from "@/types/goal";
 
 const collectionFor = (uid: string) =>
   getAdminDb().collection("users").doc(uid).collection("goals");
@@ -45,15 +46,23 @@ export async function POST(request: Request) {
       await checks.doc(payload.date).delete();
     }
 
-    const { streak, hallOfFameAt } = await computeStreakAndHallOfFame(
-      goalRef,
-      payload.date
-    );
+    const goalData = goalSnap.data() ?? {};
+    const frequency = (goalData.frequency as FrequencyType) ?? "daily";
+    const weeklyTarget = (goalData.weeklyTarget as number) ?? 2;
+
+    const { streak, hallOfFameAt, currentWeekChecks } =
+      await computeStreakAndHallOfFame(
+        goalRef,
+        payload.date,
+        frequency,
+        weeklyTarget
+      );
 
     return NextResponse.json({
       ok: true,
       streak,
       hallOfFameAt,
+      currentWeekChecks,
     });
   } catch (error) {
     console.error(error);
@@ -66,13 +75,15 @@ export async function POST(request: Request) {
 
 async function computeStreakAndHallOfFame(
   goalRef: DocumentReference,
-  dateKey: string
+  dateKey: string,
+  frequency: FrequencyType,
+  weeklyTarget: number
 ) {
   const checksSnap = await goalRef
     .collection("checks")
     .where("date", "<=", dateKey)
     .orderBy("date", "desc")
-    .limit(100)
+    .limit(200)
     .get();
 
   const checkedDates = new Set(
@@ -82,21 +93,34 @@ async function computeStreakAndHallOfFame(
       .map((item) => item.date as string)
   );
 
-  const streak = computeStreak(checkedDates, dateKey);
+  let streak: number;
+  let currentWeekChecks: number | undefined;
+
+  if (frequency === "weekly") {
+    const weeklyStats = computeWeeklyStreak(checkedDates, dateKey, weeklyTarget);
+    streak = weeklyStats.streak;
+    currentWeekChecks = weeklyStats.currentWeekChecks;
+  } else {
+    streak = computeDailyStreak(checkedDates, dateKey);
+  }
 
   const goalData = goalRef.get().then((snap) => snap.data() ?? {});
-  const existingHall = (await goalData).hallOfFameAt as string | undefined | null;
+  const existingHall = (await goalData).hallOfFameAt as
+    | string
+    | undefined
+    | null;
 
   if (!existingHall && streak >= 90) {
     const hallOfFameAt = new Date().toISOString();
     await goalRef.set({ hallOfFameAt }, { merge: true });
-    return { streak, hallOfFameAt };
+    return { streak, hallOfFameAt, currentWeekChecks };
   }
 
-  return { streak, hallOfFameAt: existingHall ?? null };
+  return { streak, hallOfFameAt: existingHall ?? null, currentWeekChecks };
 }
 
-function computeStreak(checkedDates: Set<string>, startDate: string) {
+// 毎日の習慣: 連続日数を計算
+function computeDailyStreak(checkedDates: Set<string>, startDate: string) {
   let streak = 0;
   let cursor = startDate;
   while (checkedDates.has(cursor)) {
@@ -104,6 +128,83 @@ function computeStreak(checkedDates: Set<string>, startDate: string) {
     cursor = addDays(cursor, -1);
   }
   return streak;
+}
+
+// 週の開始日（月曜日）を取得
+function getWeekStart(dateKey: string): string {
+  const date = parseDateKey(dateKey);
+  const day = date.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setUTCDate(date.getUTCDate() + diff);
+  return formatDateKey(date);
+}
+
+// 週間の習慣: 連続達成週数を計算
+function computeWeeklyStreak(
+  checkedDates: Set<string>,
+  dateKey: string,
+  weeklyTarget: number
+): { streak: number; currentWeekChecks: number } {
+  if (checkedDates.size === 0) {
+    return { streak: 0, currentWeekChecks: 0 };
+  }
+
+  // 週ごとのチェック数を集計
+  const weeklyChecks = new Map<string, number>();
+  for (const date of checkedDates) {
+    const weekStart = getWeekStart(date);
+    weeklyChecks.set(weekStart, (weeklyChecks.get(weekStart) ?? 0) + 1);
+  }
+
+  // 今週のチェック数
+  const currentWeekStart = getWeekStart(dateKey);
+  const currentWeekChecks = weeklyChecks.get(currentWeekStart) ?? 0;
+
+  // 連続達成週数を計算（今週から遡る）
+  let streak = 0;
+  let cursor = currentWeekStart;
+
+  const isCurrentWeekComplete = currentWeekChecks >= weeklyTarget;
+
+  if (isCurrentWeekComplete) {
+    streak = 1;
+    cursor = addDays(cursor, -7);
+
+    while (true) {
+      const checks = weeklyChecks.get(cursor) ?? 0;
+      if (checks >= weeklyTarget) {
+        streak++;
+        cursor = addDays(cursor, -7);
+      } else {
+        break;
+      }
+    }
+  } else {
+    // 今週はまだ達成していないが、先週から遡って連続をカウント
+    const lastWeek = addDays(currentWeekStart, -7);
+    const lastWeekChecks = weeklyChecks.get(lastWeek) ?? 0;
+
+    if (lastWeekChecks >= weeklyTarget) {
+      streak = 1;
+      cursor = addDays(lastWeek, -7);
+
+      while (true) {
+        const checks = weeklyChecks.get(cursor) ?? 0;
+        if (checks >= weeklyTarget) {
+          streak++;
+          cursor = addDays(cursor, -7);
+        } else {
+          break;
+        }
+      }
+    }
+  }
+
+  // 週数を日数に換算（1週 = 7日として表示）
+  return {
+    streak: streak * 7,
+    currentWeekChecks,
+  };
 }
 
 function addDays(dateKey: string, offset: number) {

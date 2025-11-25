@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { History } from "lucide-react";
 
 function todayKey() {
   const now = new Date();
@@ -95,6 +97,7 @@ export default function TodayPage() {
         const data = (await res.json()) as {
           streak?: number;
           hallOfFameAt?: string | null;
+          currentWeekChecks?: number;
         };
         setGoals((prev) =>
           prev.map((habit) =>
@@ -105,6 +108,8 @@ export default function TodayPage() {
                   streak: data.streak ?? habit.streak ?? 0,
                   hallOfFameAt: data.hallOfFameAt ?? habit.hallOfFameAt ?? null,
                   isHallOfFame: Boolean(data.hallOfFameAt ?? habit.hallOfFameAt),
+                  currentWeekChecks:
+                    data.currentWeekChecks ?? habit.currentWeekChecks,
                 }
               : habit
           )
@@ -246,6 +251,9 @@ function HabitCard({
   const checked = habit.checkedToday ?? false;
   const streak = habit.streak ?? 0;
   const progress = Math.min(90, streak);
+  const isWeekly = habit.frequency === "weekly";
+  const weeklyTarget = habit.weeklyTarget ?? 2;
+  const currentWeekChecks = habit.currentWeekChecks ?? 0;
 
   return (
     <div
@@ -280,10 +288,39 @@ function HabitCard({
 
         {/* 習慣情報 */}
         <div className="flex-1 space-y-2">
-          <p className="text-base font-bold text-slate-900">{habit.text}</p>
+          <div className="flex items-start justify-between">
+            <p className="text-base font-bold text-slate-900">{habit.text}</p>
+            <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
+              {isWeekly ? `週${weeklyTarget}回` : "毎日"}
+            </span>
+          </div>
           <p className="text-xs font-medium text-slate-400">
             {formatDate(habit.startDate)} 〜 {formatDate(habit.endDate)}
           </p>
+
+          {/* 週間習慣の今週進捗 */}
+          {isWeekly && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500">今週:</span>
+              <div className="flex gap-1">
+                {Array.from({ length: weeklyTarget }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "h-2 w-4 rounded-full",
+                      i < currentWeekChecks ? "bg-mint-500" : "bg-slate-200"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="text-xs font-bold text-slate-600">
+                {currentWeekChecks}/{weeklyTarget}
+              </span>
+              {currentWeekChecks >= weeklyTarget && (
+                <span className="text-xs font-bold text-mint-600">達成!</span>
+              )}
+            </div>
+          )}
 
           {/* ストリーク */}
           <div className="flex items-center gap-3">
@@ -291,7 +328,9 @@ function HabitCard({
               <div
                 className={cn(
                   "h-2 rounded-full transition-all",
-                  checked ? "bg-mint-500" : "bg-slate-300"
+                  checked || (isWeekly && currentWeekChecks >= weeklyTarget)
+                    ? "bg-mint-500"
+                    : "bg-slate-300"
                 )}
                 style={{ width: `${(progress / 90) * 100}%` }}
               />
@@ -302,15 +341,27 @@ function HabitCard({
             </span>
           </div>
 
+          {/* モチベーションメッセージ */}
           {streak >= 7 && (
             <p className="text-xs font-semibold text-mint-600">
               {streak >= 90
                 ? "殿堂入り達成！"
                 : streak >= 30
-                ? `${90 - streak}日で殿堂入り！`
+                ? `あと${90 - streak}日で殿堂入り！`
+                : isWeekly
+                ? `${Math.floor(streak / 7)}週連続達成！この調子！`
                 : `${streak}日連続！この調子で続けましょう`}
             </p>
           )}
+
+          {/* 履歴リンク */}
+          <Link
+            href={`/habit/${habit.id}`}
+            className="inline-flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-mint-600"
+          >
+            <History className="h-3 w-3" />
+            履歴を見る
+          </Link>
         </div>
       </div>
     </div>
