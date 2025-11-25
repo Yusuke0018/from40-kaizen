@@ -6,6 +6,8 @@ import { verifyRequestUser } from "@/lib/auth/server-token";
 import { goalSchema, type GoalInput } from "@/lib/schemas/goal";
 import { todayKey } from "@/lib/date";
 
+const MAX_ACTIVE_HABITS = 3;
+
 const collectionFor = (uid: string) =>
   getAdminDb().collection("users").doc(uid).collection("goals");
 
@@ -15,7 +17,6 @@ export async function GET(request: Request) {
     const collection = collectionFor(user.uid);
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get("date") ?? todayKey();
-    const limitParam = Number(searchParams.get("limit") ?? "0");
 
     const snapshot = await collection.orderBy("startDate", "desc").get();
     const now = new Date();
@@ -47,11 +48,9 @@ export async function GET(request: Request) {
     );
 
     const activeHabits = enriched.filter((goal) => !goal.isHallOfFame);
-    const limited =
-      limitParam > 0 ? activeHabits.slice(0, limitParam) : activeHabits;
     const hallOfFame = enriched.filter((goal) => goal.isHallOfFame);
 
-    return NextResponse.json([...limited, ...hallOfFame]);
+    return NextResponse.json([...activeHabits, ...hallOfFame]);
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -80,12 +79,32 @@ export async function POST(request: Request) {
       );
     }
 
+    const collection = collectionFor(user.uid);
+    const snapshot = await collection.get();
+    const now = new Date();
+
+    const activeCount = snapshot.docs.filter((doc) => {
+      const data = doc.data() as GoalInput & { hallOfFameAt?: string | null };
+      if (data.hallOfFameAt) return false;
+      const rawExpire = data.expireAt;
+      if (!rawExpire || typeof rawExpire !== "string") return true;
+      const expireAt = new Date(rawExpire);
+      if (Number.isNaN(expireAt.getTime())) return true;
+      return expireAt > now;
+    }).length;
+
+    if (activeCount >= MAX_ACTIVE_HABITS) {
+      return NextResponse.json(
+        { error: `習慣は最大${MAX_ACTIVE_HABITS}つまでです。` },
+        { status: 400 }
+      );
+    }
+
     const expire = new Date(end);
     expire.setDate(expire.getDate() + 1);
 
     const timestamp = new Date().toISOString();
 
-    const collection = collectionFor(user.uid);
     const docRef = await collection.add({
       text: parsed.text,
       startDate: parsed.startDate,
