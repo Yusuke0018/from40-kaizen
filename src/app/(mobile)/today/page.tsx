@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
+import type { UserLevel } from "@/lib/level-system";
 import { cn } from "@/lib/utils";
-import { AlertTriangle, MessageCircle, Sparkles, Trophy, Zap, Star, Flame, Moon, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { AlertTriangle, Sparkles, Trophy, Zap, Star, Flame, Moon, ChevronLeft, ChevronRight, Check, Crown, TrendingUp } from "lucide-react";
 
 function getDateKey(date: Date) {
   const year = date.getFullYear();
@@ -50,6 +51,13 @@ type GoalWithYesterday = Goal & {
   checkedYesterday?: boolean;
 };
 
+type LevelUpInfo = {
+  oldLevel: number;
+  newLevel: number;
+  newTitle: string;
+  newTitleEn: string;
+};
+
 export default function TodayPage() {
   const { user } = useAuthContext();
   const [goals, setGoals] = useState<GoalWithYesterday[]>([]);
@@ -58,6 +66,9 @@ export default function TodayPage() {
   const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [showComment, setShowComment] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
+  const [levelUp, setLevelUp] = useState<LevelUpInfo | null>(null);
+  const [pointsEarned, setPointsEarned] = useState<number | null>(null);
 
   const currentDateKey = selectedDate === "today" ? todayKey() : yesterdayKey();
 
@@ -83,10 +94,27 @@ export default function TodayPage() {
     }
   }, [user]);
 
+  const loadLevel = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch("/api/user/level", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = (await res.json()) as UserLevel;
+        setUserLevel(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     void loadGoals();
-  }, [user, loadGoals]);
+    void loadLevel();
+  }, [user, loadGoals, loadLevel]);
 
   const handleHabitCheck = useCallback(
     async (goalId: string, nextChecked: boolean, dateKey: string) => {
@@ -130,6 +158,9 @@ export default function TodayPage() {
           streak?: number;
           hallOfFameAt?: string | null;
           comment?: string;
+          pointsEarned?: number;
+          levelUp?: LevelUpInfo | null;
+          level?: UserLevel | null;
         };
 
         setGoals((prev) =>
@@ -147,9 +178,24 @@ export default function TodayPage() {
           )
         );
 
-        if (nextChecked && data.comment) {
+        // レベル情報更新
+        if (data.level) {
+          setUserLevel(data.level);
+        }
+
+        // レベルアップ演出
+        if (data.levelUp) {
+          setLevelUp(data.levelUp);
+        } else if (nextChecked && data.comment) {
+          // レベルアップがない場合はコメント表示
           setShowComment(data.comment);
           setTimeout(() => setShowComment(null), 4000);
+        }
+
+        // ポイント獲得表示
+        if (nextChecked && data.pointsEarned && data.pointsEarned > 0) {
+          setPointsEarned(data.pointsEarned);
+          setTimeout(() => setPointsEarned(null), 2000);
         }
       } catch (err) {
         console.error(err);
@@ -178,38 +224,81 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-5 pb-20">
-      {/* Comment Popup Modal */}
-      {showComment && (
+      {/* Level Up Modal */}
+      {levelUp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-md animate-fade-in"
+            onClick={() => setLevelUp(null)}
+          />
+          <div className="relative animate-popup-in">
+            <div className="glass-card relative overflow-hidden rounded-3xl p-8 shadow-2xl shadow-amber-500/30">
+              {/* Particle effects */}
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-400/40 to-yellow-400/40 blur-3xl animate-pulse-soft" />
+                <div className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-gradient-to-br from-orange-400/30 to-amber-400/30 blur-2xl animate-pulse-soft" />
+                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-40 w-40 rounded-full bg-gradient-to-br from-yellow-300/20 to-amber-300/20 blur-3xl animate-glow" />
+              </div>
+
+              <div className="relative flex flex-col items-center text-center">
+                {/* Crown Icon */}
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 via-yellow-400 to-orange-500 shadow-xl shadow-amber-500/40 animate-bounce-in">
+                  <Crown className="h-10 w-10 text-white" />
+                </div>
+
+                {/* Level Up Text */}
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-amber-600 animate-fade-in">
+                  Level Up!
+                </p>
+
+                {/* Level Numbers */}
+                <div className="mb-3 flex items-center gap-3">
+                  <span className="text-2xl font-bold text-slate-400">LV.{levelUp.oldLevel}</span>
+                  <TrendingUp className="h-6 w-6 text-amber-500" />
+                  <span className="text-4xl font-black gradient-text-gold">LV.{levelUp.newLevel}</span>
+                </div>
+
+                {/* New Title */}
+                <div className="mb-2 rounded-full bg-gradient-to-r from-amber-100 to-yellow-100 px-6 py-2">
+                  <p className="text-lg font-bold text-amber-800">{levelUp.newTitle}</p>
+                </div>
+                <p className="text-sm font-medium text-slate-500">{levelUp.newTitleEn}</p>
+
+                {/* Close hint */}
+                <p className="mt-6 text-xs text-slate-400">
+                  タップして閉じる
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Comment Popup Modal */}
+      {showComment && !levelUp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
           <div
             className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm animate-fade-in"
             onClick={() => setShowComment(null)}
           />
-          {/* Modal */}
           <div className="relative animate-popup-in">
             <div className="glass-card relative overflow-hidden rounded-3xl p-6 shadow-2xl shadow-teal-500/20">
-              {/* Decorative elements */}
               <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-teal-400/30 to-emerald-400/30 blur-2xl" />
               <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-gradient-to-br from-cyan-400/25 to-teal-400/25 blur-xl" />
 
               <div className="relative flex flex-col items-center text-center">
-                {/* Icon */}
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 shadow-lg shadow-teal-500/30 animate-bounce-in">
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
 
-                {/* Title */}
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-teal-600">
                   Great Job!
                 </p>
 
-                {/* Comment */}
                 <p className="text-base font-bold text-slate-700 leading-relaxed">
                   {showComment}
                 </p>
 
-                {/* Close hint */}
                 <p className="mt-4 text-xs text-slate-400">
                   タップして閉じる
                 </p>
@@ -217,6 +306,61 @@ export default function TodayPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Points Earned Toast */}
+      {pointsEarned && (
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-40 animate-popup-in">
+          <div className="glass-card rounded-full px-4 py-2 shadow-lg">
+            <p className="text-sm font-bold text-amber-600">
+              +{pointsEarned} pt
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Level Card */}
+      {userLevel && (
+        <section className="glass-card relative overflow-hidden rounded-2xl p-5">
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-to-br from-amber-400/15 to-yellow-400/15 blur-3xl" />
+          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-gradient-to-br from-orange-400/10 to-amber-400/10 blur-xl" />
+
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-amber-500/20">
+                  <Crown className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-slate-400">
+                    Level {userLevel.level}
+                  </p>
+                  <p className="text-lg font-bold text-slate-800">{userLevel.title}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black gradient-text-gold">{userLevel.totalPoints}</p>
+                <p className="text-[0.65rem] font-semibold text-slate-400">TOTAL PT</p>
+              </div>
+            </div>
+
+            {/* Progress to next level */}
+            {userLevel.level < 50 && (
+              <div className="mt-4 space-y-1.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-500">Next Level</span>
+                  <span className="font-bold text-amber-600">{userLevel.progress}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100/80">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
+                    style={{ width: `${userLevel.progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Header Card */}

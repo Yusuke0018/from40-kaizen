@@ -1,17 +1,26 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import type { DocumentReference } from "firebase-admin/firestore";
+import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { todayKey } from "@/lib/date";
 import { getComment } from "@/lib/comments";
 import type { CheckRecord } from "@/types/goal";
+import {
+  calculateCheckPoints,
+  calculateLevel,
+  checkLevelUp,
+} from "@/lib/level-system";
 
 const HALL_OF_FAME_DAYS = 90;
 const MAX_GAP_DAYS = 2; // 2日までOK、3日以上空くとリセット
 
 const collectionFor = (uid: string) =>
   getAdminDb().collection("users").doc(uid).collection("goals");
+
+const userDocFor = (uid: string) =>
+  getAdminDb().collection("users").doc(uid);
 
 const inputSchema = z.object({
   goalId: z.string().min(1),
@@ -36,6 +45,10 @@ export async function POST(request: Request) {
     const checks = goalRef.collection("checks");
     const timestamp = new Date().toISOString();
 
+    // 既にチェック済みかどうか確認
+    const existingCheck = await checks.doc(payload.date).get();
+    const wasChecked = existingCheck.exists && existingCheck.data()?.checked;
+
     if (payload.checked) {
       await checks.doc(payload.date).set(
         {
@@ -53,12 +66,63 @@ export async function POST(request: Request) {
     const { streak, hallOfFameAt, isRestart, comment } =
       await computeStreakAndHallOfFame(goalRef, payload.date);
 
+    // ポイント計算とレベルアップ判定
+    let pointsEarned = 0;
+    let levelUp = null;
+    let newLevel = null;
+
+    // チェックON時のみポイント付与（既にチェック済みでなければ）
+    if (payload.checked && !wasChecked) {
+      const userDoc = userDocFor(user.uid);
+      const userSnap = await userDoc.get();
+      const currentPoints = (userSnap.data()?.totalPoints as number) || 0;
+
+      const { points, breakdown } = calculateCheckPoints({
+        streak,
+        isRestart,
+        isHallOfFame: hallOfFameAt !== null && streak === HALL_OF_FAME_DAYS,
+      });
+
+      pointsEarned = points;
+
+      // ポイント更新
+      await userDoc.set(
+        { totalPoints: FieldValue.increment(points) },
+        { merge: true }
+      );
+
+      // レベルアップ判定
+      const levelResult = checkLevelUp(currentPoints, currentPoints + points);
+      if (levelResult.leveledUp) {
+        levelUp = {
+          oldLevel: levelResult.oldLevel.level,
+          newLevel: levelResult.newLevel.level,
+          newTitle: levelResult.newLevel.title,
+          newTitleEn: levelResult.newLevel.titleEn,
+        };
+      }
+      newLevel = levelResult.newLevel;
+    }
+
+    // チェックOFF時はポイント減算
+    if (!payload.checked && wasChecked) {
+      const userDoc = userDocFor(user.uid);
+      // 最低1ポイント減算（ボーナス分は取り消さない）
+      await userDoc.set(
+        { totalPoints: FieldValue.increment(-1) },
+        { merge: true }
+      );
+    }
+
     return NextResponse.json({
       ok: true,
       streak,
       hallOfFameAt,
       isRestart,
       comment,
+      pointsEarned,
+      levelUp,
+      level: newLevel,
     });
   } catch (error) {
     console.error(error);
