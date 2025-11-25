@@ -2,8 +2,7 @@
 
 :root {
   color-scheme: light;
-  /* ミントがはっきり分かる程度の彩度 */
-  --background: #e0f2f1;
+  --background: #fafbfc;
   --foreground: #0f172a;
   --radius-xl: 20px;
   --radius-lg: 12px;
@@ -13,11 +12,12 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Mint / Teal palette */
+  /* Mint / Teal palette - Primary */
   --color-mint-50: #f0fdfa;
   --color-mint-100: #ccfbf1;
   --color-mint-200: #99f6e4;
   --color-mint-300: #5eead4;
+  --color-mint-400: #2dd4bf;
   --color-mint-500: #14b8a6;
   --color-mint-600: #0d9488;
   --color-mint-700: #0f766e;
@@ -28,6 +28,7 @@
   --color-sky-100: #e0f2fe;
   --color-sky-200: #bae6fd;
   --color-sky-300: #7dd3fc;
+  --color-sky-400: #38bdf8;
   --color-sky-500: #0ea5e9;
 
   --color-blue-50: #eff6ff;
@@ -41,35 +42,99 @@
   --color-indigo-100: #e0e7ff;
   --color-indigo-200: #c7d2fe;
   --color-indigo-300: #a5b4fc;
+  --color-indigo-400: #818cf8;
   --color-indigo-500: #6366f1;
+  --color-indigo-600: #4f46e5;
 
   --color-violet-50: #f5f3ff;
   --color-violet-100: #ede9fe;
   --color-violet-200: #ddd6fe;
   --color-violet-300: #c4b5fd;
+  --color-violet-400: #a78bfa;
   --color-violet-500: #8b5cf6;
+  --color-violet-600: #7c3aed;
+
+  /* Purple palette */
+  --color-purple-50: #faf5ff;
+  --color-purple-100: #f3e8ff;
+  --color-purple-200: #e9d5ff;
+  --color-purple-300: #d8b4fe;
+  --color-purple-400: #c084fc;
+  --color-purple-500: #a855f7;
+  --color-purple-600: #9333ea;
+
+  /* Pink palette */
+  --color-pink-50: #fdf2f8;
+  --color-pink-100: #fce7f3;
+  --color-pink-200: #fbcfe8;
+  --color-pink-300: #f9a8d4;
+  --color-pink-400: #f472b6;
+  --color-pink-500: #ec4899;
+  --color-pink-600: #db2777;
 
   /* Rose / Red-ish palette */
   --color-rose-50: #fff1f2;
   --color-rose-100: #ffe4e6;
   --color-rose-200: #fecdd3;
   --color-rose-300: #fda4af;
+  --color-rose-400: #fb7185;
   --color-rose-500: #f43f5e;
+  --color-rose-600: #e11d48;
 
-  /* Warm accent (for nutritionなど) */
+  /* Orange palette */
+  --color-orange-50: #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea580c;
+
+  /* Warm accent */
   --color-amber-50: #fffbeb;
   --color-amber-100: #fef3c7;
   --color-amber-200: #fde68a;
   --color-amber-300: #fcd34d;
+  --color-amber-400: #fbbf24;
   --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+
+  /* Yellow palette */
+  --color-yellow-50: #fefce8;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-400: #facc15;
+  --color-yellow-500: #eab308;
+
+  /* Green palette */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-200: #bbf7d0;
+  --color-green-300: #86efac;
+  --color-green-400: #4ade80;
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+
+  /* Emerald palette */
+  --color-emerald-50: #ecfdf5;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-emerald-400: #34d399;
+  --color-emerald-500: #10b981;
+  --color-emerald-600: #059669;
 
   /* Slate neutrals */
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
   --color-slate-200: #e2e8f0;
   --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
   --color-slate-500: #64748b;
+  --color-slate-600: #475569;
   --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
 
   --font-sans: var(--font-manrope);
@@ -78,11 +143,13 @@
   --radius-xl: var(--radius-xl);
   --radius-lg: var(--radius-lg);
 
-  /* カードの実在感を出すための影 */
-  --shadow-card: 0 2px 4px rgba(15, 118, 110, 0.05),
-    0 1px 2px rgba(15, 118, 110, 0.1);
-  --shadow-soft: 0 2px 4px rgba(15, 23, 42, 0.04),
-    0 1px 2px rgba(15, 23, 42, 0.06);
+  /* Enhanced shadows */
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-soft: 0 2px 4px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-glow-mint: 0 0 20px rgba(20, 184, 166, 0.3);
+  --shadow-glow-amber: 0 0 20px rgba(245, 158, 11, 0.3);
+  --shadow-glow-rose: 0 0 20px rgba(244, 63, 94, 0.3);
+  --shadow-glow-violet: 0 0 20px rgba(139, 92, 246, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -100,7 +167,9 @@
 
 body {
   background-color: var(--background);
-  background-image: none;
+  background-image:
+    radial-gradient(ellipse at top left, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
   color: var(--foreground);
   font-family: var(--font-manrope, system-ui, -apple-system, BlinkMacSystemFont,
       "Segoe UI", sans-serif);
@@ -118,8 +187,8 @@ textarea,
 select {
   appearance: none;
   border-radius: var(--radius-lg);
-  background: var(--color-slate-50);
-  border: 1px solid var(--color-slate-200);
+  background: white;
+  border: 2px solid var(--color-slate-200);
   padding: 0.85rem 1rem;
   font-size: 0.95rem;
   width: 100%;
@@ -134,7 +203,7 @@ select:focus {
   outline: none;
   background: #ffffff;
   border-color: var(--color-mint-500);
-  box-shadow: 0 0 0 3px var(--color-mint-100);
+  box-shadow: 0 0 0 4px var(--color-mint-100);
 }
 
 input::placeholder,
@@ -148,9 +217,8 @@ label {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-mint-800);
-  opacity: 0.8;
-  margin-bottom: 0.4rem;
+  color: var(--color-slate-600);
+  margin-bottom: 0.5rem;
   margin-left: 0.2rem;
 }
 
@@ -199,4 +267,80 @@ input[type="range"]::-webkit-slider-runnable-track {
   cursor: pointer;
   background: transparent;
   border-radius: 999px;
+}
+
+/* Gradient Text Utilities */
+.gradient-text-primary {
+  background: linear-gradient(135deg, var(--color-mint-600) 0%, var(--color-emerald-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-accent {
+  background: linear-gradient(135deg, var(--color-violet-500) 0%, var(--color-pink-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-warning {
+  background: linear-gradient(135deg, var(--color-orange-500) 0%, var(--color-rose-500) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-gold {
+  background: linear-gradient(135deg, var(--color-amber-500) 0%, var(--color-yellow-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animated gradient border */
+@keyframes gradient-rotate {
+  0% { --gradient-angle: 0deg; }
+  100% { --gradient-angle: 360deg; }
+}
+
+.animate-gradient-border {
+  animation: gradient-rotate 3s linear infinite;
+}
+
+/* Pulse animation for warnings */
+@keyframes pulse-warning {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-warning {
+  animation: pulse-warning 2s ease-in-out infinite;
+}
+
+/* Float animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Shimmer effect */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
 }
