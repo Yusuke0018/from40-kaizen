@@ -6,6 +6,7 @@ import type { Goal } from "@/types/goal";
 import type { UserLevel } from "@/lib/level-system";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Sparkles, Trophy, Zap, Star, Flame, Moon, ChevronLeft, ChevronRight, Check, Crown, TrendingUp } from "lucide-react";
+import { getCachedGoals, setCachedGoals, getCachedUserLevel, setCachedUserLevel } from "@/lib/cache-store";
 
 function getDateKey(date: Date) {
   const year = date.getFullYear();
@@ -76,24 +77,19 @@ const MILESTONE_INFO: Record<number, { emoji: string; message: string; color: st
   50: { emoji: "🌟", message: "ご機嫌の極み！", color: "from-yellow-300 via-amber-400 to-orange-500" },
 };
 
-// モジュールレベルのキャッシュ（ページ遷移しても保持される）
-let cachedGoals: GoalWithYesterday[] | null = null;
-let cachedUserLevel: UserLevel | null = null;
-let cacheDate: string | null = null; // キャッシュした日付（日付が変わったら再取得）
-
 export default function TodayPage() {
   const { user } = useAuthContext();
 
-  // キャッシュがあれば初期値として使用（即座に表示）
-  const today = todayKey();
-  const hasValidCache = cachedGoals !== null && cacheDate === today;
+  // グローバルキャッシュから初期値を取得（localStorage + メモリ）
+  const initialGoals = getCachedGoals() as GoalWithYesterday[] | null;
+  const initialLevel = getCachedUserLevel();
 
-  const [goals, setGoals] = useState<GoalWithYesterday[]>(hasValidCache ? cachedGoals! : []);
-  const [loading, setLoading] = useState(!hasValidCache);
+  const [goals, setGoals] = useState<GoalWithYesterday[]>(initialGoals ?? []);
+  const [loading, setLoading] = useState(initialGoals === null);
   const [error, setError] = useState<string | null>(null);
   const [showComment, setShowComment] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
-  const [userLevel, setUserLevel] = useState<UserLevel | null>(hasValidCache ? cachedUserLevel : null);
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(initialLevel);
   const [levelUp, setLevelUp] = useState<LevelUpInfo | null>(null);
   const [levelDown, setLevelDown] = useState<LevelDownInfo | null>(null);
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
@@ -107,8 +103,8 @@ export default function TodayPage() {
   useEffect(() => {
     if (!user) return;
 
-    // キャッシュが有効な場合はスキップ（ページ遷移で戻ってきた場合）
-    if (hasValidCache) {
+    // キャッシュが有効な場合はスキップ
+    if (initialGoals !== null) {
       setLoading(false);
       return;
     }
@@ -116,6 +112,7 @@ export default function TodayPage() {
     const loadData = async () => {
       try {
         const token = await user.getIdToken();
+        const today = todayKey();
         // 両方のAPIを並列で呼び出し
         const [goalsRes, levelRes] = await Promise.all([
           fetch(`/api/goals?date=${today}&includeYesterday=true`, {
@@ -129,9 +126,7 @@ export default function TodayPage() {
         if (goalsRes.ok) {
           const data = (await goalsRes.json()) as GoalWithYesterday[];
           setGoals(data);
-          // キャッシュを更新
-          cachedGoals = data;
-          cacheDate = today;
+          setCachedGoals(data);
         } else {
           setError("習慣の取得に失敗しました。");
         }
@@ -139,7 +134,7 @@ export default function TodayPage() {
         if (levelRes.ok) {
           const data = (await levelRes.json()) as UserLevel;
           setUserLevel(data);
-          cachedUserLevel = data;
+          setCachedUserLevel(data);
         }
       } catch (err) {
         console.error(err);
@@ -182,7 +177,7 @@ export default function TodayPage() {
           return habit;
         });
         // キャッシュも更新
-        cachedGoals = updated;
+        setCachedGoals(updated);
         return updated;
       });
 
@@ -237,14 +232,14 @@ export default function TodayPage() {
                   }
                 : habit
             );
-            cachedGoals = updated;
+            setCachedGoals(updated);
             return updated;
           });
 
           // レベル情報更新
           if (data.level) {
             setUserLevel(data.level);
-            cachedUserLevel = data.level;
+            setCachedUserLevel(data.level);
           }
 
           // レベルアップ演出
@@ -267,7 +262,7 @@ export default function TodayPage() {
               const updated = prev.map((habit) =>
                 habit.id === goalId ? previousState! : habit
               );
-              cachedGoals = updated;
+              setCachedGoals(updated);
               return updated;
             });
           }

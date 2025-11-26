@@ -5,6 +5,7 @@ import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
 import { LogOut, Pencil, Plus, Trash2, User, ListChecks, Trophy, Star, Sparkles, Calendar, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCachedGoals, setCachedGoals } from "@/lib/cache-store";
 
 const MAX_HABITS = 3;
 
@@ -33,8 +34,11 @@ export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
   const [signingOut, setSigningOut] = useState(false);
 
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [loadingGoals, setLoadingGoals] = useState(false);
+  // グローバルキャッシュから初期値を取得
+  const initialGoals = getCachedGoals();
+
+  const [goals, setGoals] = useState<Goal[]>(initialGoals ?? []);
+  const [loadingGoals, setLoadingGoals] = useState(initialGoals === null);
   const [goalError, setGoalError] = useState<string | null>(null);
 
   const [goalText, setGoalText] = useState("");
@@ -51,13 +55,21 @@ export default function SettingsPage() {
     [goals]
   );
 
-  const loadGoals = useCallback(async () => {
+  const loadGoals = useCallback(async (forceRefresh = false) => {
     if (!user) return;
+
+    // キャッシュが有効でforceRefreshでない場合はスキップ
+    if (!forceRefresh && initialGoals !== null) {
+      setLoadingGoals(false);
+      return;
+    }
+
     setLoadingGoals(true);
     setGoalError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/goals?date=${isoToday()}`, {
+      const today = isoToday();
+      const res = await fetch(`/api/goals?date=${today}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -65,18 +77,20 @@ export default function SettingsPage() {
       }
       const data = (await res.json()) as Goal[];
       setGoals(data);
+      setCachedGoals(data);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の取得に失敗しました。");
     } finally {
       setLoadingGoals(false);
     }
-  }, [user]);
+  }, [user, initialGoals]);
 
   useEffect(() => {
     if (!user) return;
     void loadGoals();
-  }, [user, loadGoals]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   async function handleSaveHabit() {
     if (!user) return;
@@ -118,7 +132,7 @@ export default function SettingsPage() {
         throw new Error(data?.error ?? "Failed to save habit");
       }
       resetForm();
-      await loadGoals();
+      await loadGoals(true);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の保存に失敗しました。");
@@ -142,7 +156,7 @@ export default function SettingsPage() {
       if (editingGoalId === goalId) {
         resetForm();
       }
-      await loadGoals();
+      await loadGoals(true);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の削除に失敗しました。");

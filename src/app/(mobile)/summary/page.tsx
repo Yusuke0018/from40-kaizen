@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import { cn } from "@/lib/utils";
+import { getCachedStats, setCachedStats } from "@/lib/cache-store";
 import {
   BarChart3,
   TrendingUp,
@@ -22,38 +23,50 @@ type ViewMode = "weekly" | "monthly";
 
 export default function SummaryPage() {
   const { user } = useAuthContext();
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // グローバルキャッシュから初期値を取得
+  const initialStats = getCachedStats<StatsResponse>();
+
+  const [stats, setStats] = useState<StatsResponse | null>(initialStats);
+  const [loading, setLoading] = useState(initialStats === null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const loadStats = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load stats");
-      }
-      const data = (await res.json()) as StatsResponse;
-      setStats(data);
-    } catch (err) {
-      console.error(err);
-      setError("統計データの取得に失敗しました。");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
     if (!user) return;
+
+    // キャッシュが有効な場合はスキップ
+    if (initialStats !== null) {
+      setLoading(false);
+      return;
+    }
+
+    const loadStats = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load stats");
+        }
+        const data = (await res.json()) as StatsResponse;
+        setStats(data);
+        setCachedStats(data);
+      } catch (err) {
+        console.error(err);
+        setError("統計データの取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     void loadStats();
-  }, [user, loadStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const currentData = viewMode === "weekly" ? stats?.weekly : stats?.monthly;
   const maxIndex = currentData ? currentData.length - 1 : 0;
