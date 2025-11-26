@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal, GoalStats, CheckRecord } from "@/types/goal";
 import { cn } from "@/lib/utils";
+import { getCachedGoalsWithHistory, setCachedGoalsWithHistory } from "@/lib/cache-store";
 import {
   Calendar,
   TrendingUp,
@@ -78,18 +79,14 @@ const CARD_COLORS = [
   },
 ];
 
-// モジュールレベルのキャッシュ
-let cachedHistoryGoals: GoalWithHistory[] | null = null;
-let historyCacheDate: string | null = null;
-
 export default function HistoryPage() {
   const { user } = useAuthContext();
 
-  const today = todayKey();
-  const hasValidCache = cachedHistoryGoals !== null && historyCacheDate === today;
+  // グローバルキャッシュから初期値を取得
+  const initialGoals = getCachedGoalsWithHistory<GoalWithHistory>();
 
-  const [goals, setGoals] = useState<GoalWithHistory[]>(hasValidCache ? cachedHistoryGoals! : []);
-  const [loading, setLoading] = useState(!hasValidCache);
+  const [goals, setGoals] = useState<GoalWithHistory[]>(initialGoals ?? []);
+  const [loading, setLoading] = useState(initialGoals === null);
   const [error, setError] = useState<string | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
@@ -97,7 +94,7 @@ export default function HistoryPage() {
     if (!user) return;
 
     // キャッシュが有効な場合はスキップ
-    if (hasValidCache) {
+    if (initialGoals !== null) {
       setLoading(false);
       return;
     }
@@ -107,6 +104,7 @@ export default function HistoryPage() {
       setError(null);
       try {
         const token = await user.getIdToken();
+        const today = todayKey();
         const res = await fetch(`/api/goals?date=${today}&history=true`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -115,9 +113,7 @@ export default function HistoryPage() {
         }
         const data = (await res.json()) as GoalWithHistory[];
         setGoals(data);
-        // キャッシュを更新
-        cachedHistoryGoals = data;
-        historyCacheDate = today;
+        setCachedGoalsWithHistory(data);
       } catch (err) {
         console.error(err);
         setError("履歴の取得に失敗しました。");

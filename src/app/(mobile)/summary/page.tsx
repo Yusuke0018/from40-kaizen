@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import { cn } from "@/lib/utils";
+import { getCachedStats, setCachedStats } from "@/lib/cache-store";
 import {
   BarChart3,
   TrendingUp,
@@ -20,23 +21,14 @@ import type { StatsResponse } from "@/app/api/stats/route";
 
 type ViewMode = "weekly" | "monthly";
 
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-// モジュールレベルのキャッシュ
-let cachedSummaryStats: StatsResponse | null = null;
-let summaryCacheDate: string | null = null;
-
 export default function SummaryPage() {
   const { user } = useAuthContext();
 
-  const today = todayKey();
-  const hasValidCache = cachedSummaryStats !== null && summaryCacheDate === today;
+  // グローバルキャッシュから初期値を取得
+  const initialStats = getCachedStats<StatsResponse>();
 
-  const [stats, setStats] = useState<StatsResponse | null>(hasValidCache ? cachedSummaryStats : null);
-  const [loading, setLoading] = useState(!hasValidCache);
+  const [stats, setStats] = useState<StatsResponse | null>(initialStats);
+  const [loading, setLoading] = useState(initialStats === null);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -45,7 +37,7 @@ export default function SummaryPage() {
     if (!user) return;
 
     // キャッシュが有効な場合はスキップ
-    if (hasValidCache) {
+    if (initialStats !== null) {
       setLoading(false);
       return;
     }
@@ -63,9 +55,7 @@ export default function SummaryPage() {
         }
         const data = (await res.json()) as StatsResponse;
         setStats(data);
-        // キャッシュを更新
-        cachedSummaryStats = data;
-        summaryCacheDate = today;
+        setCachedStats(data);
       } catch (err) {
         console.error(err);
         setError("統計データの取得に失敗しました。");

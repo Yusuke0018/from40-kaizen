@@ -5,6 +5,7 @@ import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
 import { LogOut, Pencil, Plus, Trash2, User, ListChecks, Trophy, Star, Sparkles, Calendar, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCachedGoals, setCachedGoals } from "@/lib/cache-store";
 
 const MAX_HABITS = 3;
 
@@ -29,19 +30,15 @@ const CARD_COLORS = [
   },
 ];
 
-// モジュールレベルのキャッシュ
-let cachedSettingsGoals: Goal[] | null = null;
-let settingsCacheDate: string | null = null;
-
 export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
   const [signingOut, setSigningOut] = useState(false);
 
-  const today = isoToday();
-  const hasValidCache = cachedSettingsGoals !== null && settingsCacheDate === today;
+  // グローバルキャッシュから初期値を取得
+  const initialGoals = getCachedGoals();
 
-  const [goals, setGoals] = useState<Goal[]>(hasValidCache ? cachedSettingsGoals! : []);
-  const [loadingGoals, setLoadingGoals] = useState(!hasValidCache);
+  const [goals, setGoals] = useState<Goal[]>(initialGoals ?? []);
+  const [loadingGoals, setLoadingGoals] = useState(initialGoals === null);
   const [goalError, setGoalError] = useState<string | null>(null);
 
   const [goalText, setGoalText] = useState("");
@@ -62,7 +59,7 @@ export default function SettingsPage() {
     if (!user) return;
 
     // キャッシュが有効でforceRefreshでない場合はスキップ
-    if (!forceRefresh && cachedSettingsGoals !== null && settingsCacheDate === today) {
+    if (!forceRefresh && initialGoals !== null) {
       setLoadingGoals(false);
       return;
     }
@@ -71,6 +68,7 @@ export default function SettingsPage() {
     setGoalError(null);
     try {
       const token = await user.getIdToken();
+      const today = isoToday();
       const res = await fetch(`/api/goals?date=${today}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -79,16 +77,14 @@ export default function SettingsPage() {
       }
       const data = (await res.json()) as Goal[];
       setGoals(data);
-      // キャッシュを更新
-      cachedSettingsGoals = data;
-      settingsCacheDate = today;
+      setCachedGoals(data);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の取得に失敗しました。");
     } finally {
       setLoadingGoals(false);
     }
-  }, [user, today]);
+  }, [user, initialGoals]);
 
   useEffect(() => {
     if (!user) return;

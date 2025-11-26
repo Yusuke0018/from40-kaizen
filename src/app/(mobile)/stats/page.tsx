@@ -21,33 +21,25 @@ import {
   Users,
 } from "lucide-react";
 import type { StatsResponse } from "@/app/api/stats/route";
-
-function todayKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-// モジュールレベルのキャッシュ
-let cachedStatsData: StatsResponse | null = null;
-let cachedStatsLevel: UserLevel | null = null;
-let statsCacheDate: string | null = null;
+import { getCachedStats, setCachedStats, getCachedUserLevel, setCachedUserLevel } from "@/lib/cache-store";
 
 export default function StatsPage() {
   const { user } = useAuthContext();
 
-  const today = todayKey();
-  const hasValidCache = cachedStatsData !== null && statsCacheDate === today;
+  // グローバルキャッシュから初期値を取得
+  const initialStats = getCachedStats<StatsResponse>();
+  const initialLevel = getCachedUserLevel();
 
-  const [stats, setStats] = useState<StatsResponse | null>(hasValidCache ? cachedStatsData : null);
-  const [userLevel, setUserLevel] = useState<UserLevel | null>(hasValidCache ? cachedStatsLevel : null);
-  const [loading, setLoading] = useState(!hasValidCache);
+  const [stats, setStats] = useState<StatsResponse | null>(initialStats);
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(initialLevel);
+  const [loading, setLoading] = useState(initialStats === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
 
     // キャッシュが有効な場合はスキップ
-    if (hasValidCache) {
+    if (initialStats !== null) {
       setLoading(false);
       return;
     }
@@ -70,16 +62,14 @@ export default function StatsPage() {
         if (statsRes.ok) {
           const statsData = (await statsRes.json()) as StatsResponse;
           setStats(statsData);
-          cachedStatsData = statsData;
+          setCachedStats(statsData);
         }
 
         if (levelRes.ok) {
           const levelData = (await levelRes.json()) as UserLevel;
           setUserLevel(levelData);
-          cachedStatsLevel = levelData;
+          setCachedUserLevel(levelData);
         }
-
-        statsCacheDate = today;
       } catch (err) {
         console.error(err);
         setError("データの取得に失敗しました。");
