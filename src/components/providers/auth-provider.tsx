@@ -23,18 +23,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
-    let unsubscribe = () => {};
-    setPersistence(firebaseAuth, browserLocalPersistence)
-      .then(() => {
-        unsubscribe = onAuthStateChanged(firebaseAuth, (next) => {
-          setUser(next);
-          setInitializing(false);
-        });
-      })
-      .catch((error) => {
-        console.error("Failed to set auth persistence", error);
-        setInitializing(false);
-      });
+    // setPersistenceを非ブロッキングで実行（認証リスナーを即座に設定）
+    setPersistence(firebaseAuth, browserLocalPersistence).catch((error) => {
+      console.error("Failed to set auth persistence", error);
+    });
+
+    // 認証状態リスナーを即座に設定
+    const unsubscribe = onAuthStateChanged(firebaseAuth, (next) => {
+      setUser(next);
+      setInitializing(false);
+    });
     return () => unsubscribe();
   }, []);
 
