@@ -132,8 +132,8 @@ export default function TodayPage() {
 
   useEffect(() => {
     if (!user) return;
-    void loadGoals();
-    void loadLevel();
+    // 両方のAPIを並列で呼び出し
+    void Promise.all([loadGoals(), loadLevel()]);
   }, [user, loadGoals, loadLevel]);
 
   const handleHabitCheck = useCallback(

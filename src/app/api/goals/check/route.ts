@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { DocumentReference } from "firebase-admin/firestore";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
@@ -9,7 +8,6 @@ import { getComment } from "@/lib/comments";
 import type { CheckRecord } from "@/types/goal";
 import {
   calculateCheckPoints,
-  calculateLevel,
   checkLevelUp,
 } from "@/lib/level-system";
 
@@ -37,47 +35,97 @@ export async function POST(request: Request) {
     const payload = inputSchema.parse(await request.json());
 
     const goalRef = collectionFor(user.uid).doc(payload.goalId);
-    const goalSnap = await goalRef.get();
+    const checks = goalRef.collection("checks");
+    const userDoc = userDocFor(user.uid);
+
+    // 必要な読み取りを全て並列で実行（大幅な速度改善）
+    const [goalSnap, existingCheck, checksSnap, userSnap] = await Promise.all([
+      goalRef.get(),
+      checks.doc(payload.date).get(),
+      checks.orderBy("date", "desc").get(),
+      userDoc.get(),
+    ]);
+
     if (!goalSnap.exists) {
       return NextResponse.json({ error: "Habit not found" }, { status: 404 });
     }
 
-    const checks = goalRef.collection("checks");
+    const goalData = goalSnap.data() ?? {};
+    const wasChecked = existingCheck.exists && existingCheck.data()?.checked;
+    const currentPoints = (userSnap.data()?.totalPoints as number) || 0;
+    const existingHall = goalData.hallOfFameAt as string | undefined | null;
+
     const timestamp = new Date().toISOString();
 
-    // 既にチェック済みかどうか確認
-    const existingCheck = await checks.doc(payload.date).get();
-    const wasChecked = existingCheck.exists && existingCheck.data()?.checked;
+    // チェック保存/削除
+    const checkWritePromise = payload.checked
+      ? checks.doc(payload.date).set(
+          {
+            date: payload.date,
+            checked: true,
+            updatedAt: timestamp,
+            createdAt: timestamp,
+          },
+          { merge: true }
+        )
+      : checks.doc(payload.date).delete();
 
-    if (payload.checked) {
-      await checks.doc(payload.date).set(
-        {
-          date: payload.date,
-          checked: true,
-          updatedAt: timestamp,
-          createdAt: timestamp,
-        },
-        { merge: true }
+    // ストリーク計算（既に取得したchecksSnapを使用）
+    const allChecks: CheckRecord[] = checksSnap.docs
+      .map((doc) => doc.data() as CheckRecord)
+      .filter((item) => item.checked && item.date)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // チェックONの場合は新しいチェックを追加してストリーク計算
+    // チェックOFFの場合は該当チェックを除外してストリーク計算
+    let checksForCalc = allChecks;
+    if (payload.checked && !wasChecked) {
+      // 新しいチェックを追加
+      checksForCalc = [...allChecks, { date: payload.date, checked: true }].sort(
+        (a, b) => a.date.localeCompare(b.date)
       );
-    } else {
-      await checks.doc(payload.date).delete();
+    } else if (!payload.checked && wasChecked) {
+      // チェックを除外
+      checksForCalc = allChecks.filter((c) => c.date !== payload.date);
     }
 
-    const { streak, hallOfFameAt, isRestart, comment } =
-      await computeStreakAndHallOfFame(goalRef, payload.date);
+    const { progressToHallOfFame, restartCount } = computeProgressWithNewRules(
+      checksForCalc,
+      payload.date
+    );
+
+    const streak = progressToHallOfFame;
+    const isRestart = restartCount > 0 && progressToHallOfFame < 3;
+
+    // コメント生成
+    const comment = getComment({
+      streak: progressToHallOfFame,
+      isRestart,
+      isMilestone: [7, 14, 21, 30, 45, 50, 60, 70, 80, 90].includes(
+        progressToHallOfFame
+      ),
+      isHallOfFame: progressToHallOfFame >= HALL_OF_FAME_DAYS,
+    });
+
+    // 殿堂入り判定
+    let hallOfFameAt = existingHall ?? null;
+    let hallOfFameWritePromise: Promise<unknown> | null = null;
+    if (!existingHall && progressToHallOfFame >= HALL_OF_FAME_DAYS) {
+      hallOfFameAt = timestamp;
+      hallOfFameWritePromise = goalRef.set({ hallOfFameAt }, { merge: true });
+    }
 
     // ポイント計算とレベルアップ判定
     let pointsEarned = 0;
+    let pointsLost = 0;
     let levelUp = null;
+    let levelDown = null;
     let newLevel = null;
+    let pointsWritePromise: Promise<unknown> | null = null;
 
     // チェックON時のみポイント付与（既にチェック済みでなければ）
     if (payload.checked && !wasChecked) {
-      const userDoc = userDocFor(user.uid);
-      const userSnap = await userDoc.get();
-      const currentPoints = (userSnap.data()?.totalPoints as number) || 0;
-
-      const { points, breakdown } = calculateCheckPoints({
+      const { points } = calculateCheckPoints({
         streak,
         isRestart,
         isHallOfFame: hallOfFameAt !== null && streak === HALL_OF_FAME_DAYS,
@@ -86,7 +134,7 @@ export async function POST(request: Request) {
       pointsEarned = points;
 
       // ポイント更新
-      await userDoc.set(
+      pointsWritePromise = userDoc.set(
         { totalPoints: FieldValue.increment(points) },
         { merge: true }
       );
@@ -107,17 +155,11 @@ export async function POST(request: Request) {
     }
 
     // チェックOFF時はポイント減算
-    let pointsLost = 0;
-    let levelDown = null;
     if (!payload.checked && wasChecked) {
-      const userDoc = userDocFor(user.uid);
-      const userSnap = await userDoc.get();
-      const currentPoints = (userSnap.data()?.totalPoints as number) || 0;
-
-      // 最低1ポイント減算（ボーナス分は取り消さない、0未満にはならない）
+      // 最低1ポイント減算（0未満にはならない）
       pointsLost = Math.min(1, currentPoints);
       if (pointsLost > 0) {
-        await userDoc.set(
+        pointsWritePromise = userDoc.set(
           { totalPoints: FieldValue.increment(-pointsLost) },
           { merge: true }
         );
@@ -135,6 +177,12 @@ export async function POST(request: Request) {
         };
       }
     }
+
+    // 全ての書き込みを並列で実行
+    const writePromises: Promise<unknown>[] = [checkWritePromise];
+    if (hallOfFameWritePromise) writePromises.push(hallOfFameWritePromise);
+    if (pointsWritePromise) writePromises.push(pointsWritePromise);
+    await Promise.all(writePromises);
 
     return NextResponse.json({
       ok: true,
@@ -155,67 +203,6 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-}
-
-async function computeStreakAndHallOfFame(
-  goalRef: DocumentReference,
-  dateKey: string
-): Promise<{
-  streak: number;
-  hallOfFameAt: string | null;
-  isRestart: boolean;
-  comment: string;
-}> {
-  const checksSnap = await goalRef
-    .collection("checks")
-    .orderBy("date", "desc")
-    .get();
-
-  const allChecks: CheckRecord[] = checksSnap.docs
-    .map((doc) => doc.data() as CheckRecord)
-    .filter((item) => item.checked && item.date)
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  const { progressToHallOfFame, restartCount } = computeProgressWithNewRules(
-    allChecks,
-    dateKey
-  );
-
-  const isRestart = restartCount > 0 && progressToHallOfFame < 3;
-
-  const goalData = goalRef.get().then((snap) => snap.data() ?? {});
-  const existingHall = (await goalData).hallOfFameAt as
-    | string
-    | undefined
-    | null;
-
-  // コメント生成
-  const comment = getComment({
-    streak: progressToHallOfFame,
-    isRestart,
-    isMilestone: [7, 14, 21, 30, 45, 50, 60, 70, 80, 90].includes(
-      progressToHallOfFame
-    ),
-    isHallOfFame: progressToHallOfFame >= HALL_OF_FAME_DAYS,
-  });
-
-  if (!existingHall && progressToHallOfFame >= HALL_OF_FAME_DAYS) {
-    const hallOfFameAt = new Date().toISOString();
-    await goalRef.set({ hallOfFameAt }, { merge: true });
-    return {
-      streak: progressToHallOfFame,
-      hallOfFameAt,
-      isRestart,
-      comment: getComment({ streak: 90, isHallOfFame: true }),
-    };
-  }
-
-  return {
-    streak: progressToHallOfFame,
-    hallOfFameAt: existingHall ?? null,
-    isRestart,
-    comment,
-  };
 }
 
 /**
