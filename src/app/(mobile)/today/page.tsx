@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal } from "@/types/goal";
 import type { UserLevel } from "@/lib/level-system";
@@ -81,7 +81,6 @@ export default function TodayPage() {
   const [goals, setGoals] = useState<GoalWithYesterday[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [habitLoading, setHabitLoading] = useState<Record<string, boolean>>({});
   const [showComment, setShowComment] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
   const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
@@ -90,164 +89,170 @@ export default function TodayPage() {
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
   const [pointsLost, setPointsLost] = useState<number | null>(null);
 
+  // 初回読み込みフラグ（一度読み込んだら再読み込みしない）
+  const dataLoadedRef = useRef(false);
+  // 処理中のhabitIdを追跡（再レンダリングを防ぐためRef使用）
+  const processingRef = useRef<Set<string>>(new Set());
+
   const currentDateKey = selectedDate === "today" ? todayKey() : yesterdayKey();
 
-  const loadGoals = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/goals?date=${todayKey()}&includeYesterday=true`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load goals");
-      }
-      const data = (await res.json()) as GoalWithYesterday[];
-      setGoals(data);
-    } catch (err) {
-      console.error(err);
-      setError("習慣の取得に失敗しました。");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  const loadLevel = useCallback(async () => {
-    if (!user) return;
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/user/level", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = (await res.json()) as UserLevel;
-        setUserLevel(data);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [user]);
-
   useEffect(() => {
-    if (!user) return;
-    // 両方のAPIを並列で呼び出し
-    void Promise.all([loadGoals(), loadLevel()]);
-  }, [user, loadGoals, loadLevel]);
+    // 既に読み込み済み、またはユーザーがいない場合はスキップ
+    if (dataLoadedRef.current || !user) return;
+    dataLoadedRef.current = true;
+
+    const loadData = async () => {
+      try {
+        const token = await user.getIdToken();
+        // 両方のAPIを並列で呼び出し
+        const [goalsRes, levelRes] = await Promise.all([
+          fetch(`/api/goals?date=${todayKey()}&includeYesterday=true`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("/api/user/level", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (goalsRes.ok) {
+          const data = (await goalsRes.json()) as GoalWithYesterday[];
+          setGoals(data);
+        } else {
+          setError("習慣の取得に失敗しました。");
+        }
+
+        if (levelRes.ok) {
+          const data = (await levelRes.json()) as UserLevel;
+          setUserLevel(data);
+        }
+      } catch (err) {
+        console.error(err);
+        setError("データの取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadData();
+  }, [user]);
 
   const handleHabitCheck = useCallback(
-    async (goalId: string, nextChecked: boolean, dateKey: string) => {
+    (goalId: string, nextChecked: boolean, dateKey: string) => {
       if (!user) return;
-      if (habitLoading[goalId]) return;
+      // 処理中なら無視
+      if (processingRef.current.has(goalId)) return;
+      processingRef.current.add(goalId);
+
       setError(null);
-      setHabitLoading((prev) => ({ ...prev, [goalId]: true }));
 
       const isToday = dateKey === todayKey();
       const checkField = isToday ? "checkedToday" : "checkedYesterday";
 
-      let previousChecked = false;
+      // 楽観的更新：即座にUIを更新（ストリークも更新）
+      let previousState: GoalWithYesterday | null = null;
       setGoals((prev) =>
         prev.map((habit) => {
           if (habit.id === goalId) {
-            previousChecked = (isToday ? habit.checkedToday : habit.checkedYesterday) ?? false;
-            return { ...habit, [checkField]: nextChecked };
+            previousState = habit;
+            const currentStreak = habit.streak ?? 0;
+            return {
+              ...habit,
+              [checkField]: nextChecked,
+              // ストリークも楽観的に更新
+              streak: nextChecked ? currentStreak + 1 : Math.max(0, currentStreak - 1),
+            };
           }
           return habit;
         })
       );
 
-      try {
-        const token = await user.getIdToken();
-        const res = await fetch("/api/goals/check", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            goalId,
-            date: dateKey,
-            checked: nextChecked,
-          }),
-        });
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-        const data = (await res.json()) as {
-          streak?: number;
-          hallOfFameAt?: string | null;
-          comment?: string;
-          pointsEarned?: number;
-          pointsLost?: number;
-          levelUp?: LevelUpInfo | null;
-          levelDown?: LevelDownInfo | null;
-          level?: UserLevel | null;
-        };
+      // ポイント表示も即座に（楽観的）
+      if (nextChecked) {
+        setPointsEarned(1);
+        setTimeout(() => setPointsEarned(null), 2000);
+      }
 
-        setGoals((prev) =>
-          prev.map((habit) =>
-            habit.id === goalId
-              ? {
-                  ...habit,
-                  [checkField]: nextChecked,
-                  streak: data.streak ?? habit.streak ?? 0,
-                  hallOfFameAt: data.hallOfFameAt ?? habit.hallOfFameAt ?? null,
-                  isHallOfFame: Boolean(data.hallOfFameAt ?? habit.hallOfFameAt),
-                  comment: data.comment ?? habit.comment,
-                }
-              : habit
-          )
-        );
+      // APIはバックグラウンドで実行（await しない）
+      (async () => {
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch("/api/goals/check", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              goalId,
+              date: dateKey,
+              checked: nextChecked,
+            }),
+          });
 
-        // レベル情報更新
-        if (data.level) {
-          setUserLevel(data.level);
-        }
+          if (!res.ok) {
+            throw new Error(await res.text());
+          }
 
-        // レベルアップ演出
-        if (data.levelUp) {
-          setLevelUp(data.levelUp);
-        } else if (nextChecked && data.comment) {
-          // レベルアップがない場合はコメント表示
-          setShowComment(data.comment);
-          setTimeout(() => setShowComment(null), 4000);
-        }
+          const data = (await res.json()) as {
+            streak?: number;
+            hallOfFameAt?: string | null;
+            comment?: string;
+            pointsEarned?: number;
+            pointsLost?: number;
+            levelUp?: LevelUpInfo | null;
+            levelDown?: LevelDownInfo | null;
+            level?: UserLevel | null;
+          };
 
-        // ポイント獲得表示
-        if (nextChecked && data.pointsEarned && data.pointsEarned > 0) {
-          setPointsEarned(data.pointsEarned);
-          setTimeout(() => setPointsEarned(null), 2000);
-        }
+          // サーバーからの正確なデータで更新
+          setGoals((prev) =>
+            prev.map((habit) =>
+              habit.id === goalId
+                ? {
+                    ...habit,
+                    [checkField]: nextChecked,
+                    streak: data.streak ?? habit.streak ?? 0,
+                    hallOfFameAt: data.hallOfFameAt ?? habit.hallOfFameAt ?? null,
+                    isHallOfFame: Boolean(data.hallOfFameAt ?? habit.hallOfFameAt),
+                  }
+                : habit
+            )
+          );
 
-        // チェックOFF時の処理
-        if (!nextChecked) {
-          // レベルダウン演出
-          if (data.levelDown) {
+          // レベル情報更新
+          if (data.level) {
+            setUserLevel(data.level);
+          }
+
+          // レベルアップ演出
+          if (data.levelUp) {
+            setLevelUp(data.levelUp);
+          } else if (nextChecked && data.comment) {
+            setShowComment(data.comment);
+            setTimeout(() => setShowComment(null), 4000);
+          }
+
+          // チェックOFF時の処理
+          if (!nextChecked && data.levelDown) {
             setLevelDown(data.levelDown);
           }
-          // ポイント減算表示
-          if (data.pointsLost && data.pointsLost > 0) {
-            setPointsLost(data.pointsLost);
-            setTimeout(() => setPointsLost(null), 2000);
+        } catch (err) {
+          console.error(err);
+          // エラー時は元に戻す
+          if (previousState) {
+            setGoals((prev) =>
+              prev.map((habit) =>
+                habit.id === goalId ? previousState! : habit
+              )
+            );
           }
+          setError("チェックの更新に失敗しました。");
+        } finally {
+          processingRef.current.delete(goalId);
         }
-      } catch (err) {
-        console.error(err);
-        setError("チェックの更新に失敗しました。");
-        setGoals((prev) =>
-          prev.map((habit) =>
-            habit.id === goalId ? { ...habit, [checkField]: previousChecked } : habit
-          )
-        );
-      }
-      setHabitLoading((prev) => {
-        const copy = { ...prev };
-        delete copy[goalId];
-        return copy;
-      });
+      })();
     },
-    [user, habitLoading]
+    [user]
   );
 
   const activeHabits = goals.filter((g) => !g.isHallOfFame);
@@ -719,7 +724,6 @@ export default function TodayPage() {
               isToday={isToday}
               currentDateKey={currentDateKey}
               onToggle={handleHabitCheck}
-              loading={habitLoading[habit.id]}
             />
           ))}
         </section>
@@ -783,14 +787,12 @@ function HabitCard({
   isToday,
   currentDateKey,
   onToggle,
-  loading,
 }: {
   habit: GoalWithYesterday;
   index: number;
   isToday: boolean;
   currentDateKey: string;
   onToggle: (goalId: string, nextChecked: boolean, dateKey: string) => void;
-  loading?: boolean;
 }) {
   const checked = isToday ? (habit.checkedToday ?? false) : (habit.checkedYesterday ?? false);
   const streak = habit.streak ?? 0;
@@ -837,25 +839,21 @@ function HabitCard({
       )}
 
       <div className="relative flex items-start gap-4">
-        {/* Check Button */}
+        {/* Check Button - 即座に反応 */}
         <button
           type="button"
-          disabled={loading}
           onClick={() => onToggle(habit.id, !checked, currentDateKey)}
           className={cn(
-            "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl text-xl font-bold transition-all",
+            "flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl text-xl font-bold transition-all active:scale-95",
             checked
               ? `bg-gradient-to-br ${colors.gradient} text-white shadow-lg`
               : showWarning
               ? "bg-rose-100 text-rose-400 hover:bg-rose-200"
-              : "glass text-slate-300 hover:bg-white/80 hover:text-slate-400",
-            loading && "animate-pulse cursor-wait"
+              : "glass text-slate-300 hover:bg-white/80 hover:text-slate-400"
           )}
           aria-pressed={checked}
         >
-          {loading ? (
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : checked ? (
+          {checked ? (
             <Check className="h-6 w-6" />
           ) : (
             <span className="text-2xl">○</span>
