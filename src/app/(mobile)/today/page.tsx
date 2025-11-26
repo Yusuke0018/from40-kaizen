@@ -76,37 +76,49 @@ const MILESTONE_INFO: Record<number, { emoji: string; message: string; color: st
   50: { emoji: "🌟", message: "ご機嫌の極み！", color: "from-yellow-300 via-amber-400 to-orange-500" },
 };
 
+// モジュールレベルのキャッシュ（ページ遷移しても保持される）
+let cachedGoals: GoalWithYesterday[] | null = null;
+let cachedUserLevel: UserLevel | null = null;
+let cacheDate: string | null = null; // キャッシュした日付（日付が変わったら再取得）
+
 export default function TodayPage() {
   const { user } = useAuthContext();
-  const [goals, setGoals] = useState<GoalWithYesterday[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // キャッシュがあれば初期値として使用（即座に表示）
+  const today = todayKey();
+  const hasValidCache = cachedGoals !== null && cacheDate === today;
+
+  const [goals, setGoals] = useState<GoalWithYesterday[]>(hasValidCache ? cachedGoals! : []);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
   const [showComment, setShowComment] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
-  const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(hasValidCache ? cachedUserLevel : null);
   const [levelUp, setLevelUp] = useState<LevelUpInfo | null>(null);
   const [levelDown, setLevelDown] = useState<LevelDownInfo | null>(null);
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
   const [pointsLost, setPointsLost] = useState<number | null>(null);
 
-  // 初回読み込みフラグ（一度読み込んだら再読み込みしない）
-  const dataLoadedRef = useRef(false);
   // 処理中のhabitIdを追跡（再レンダリングを防ぐためRef使用）
   const processingRef = useRef<Set<string>>(new Set());
 
   const currentDateKey = selectedDate === "today" ? todayKey() : yesterdayKey();
 
   useEffect(() => {
-    // 既に読み込み済み、またはユーザーがいない場合はスキップ
-    if (dataLoadedRef.current || !user) return;
-    dataLoadedRef.current = true;
+    if (!user) return;
+
+    // キャッシュが有効な場合はスキップ（ページ遷移で戻ってきた場合）
+    if (hasValidCache) {
+      setLoading(false);
+      return;
+    }
 
     const loadData = async () => {
       try {
         const token = await user.getIdToken();
         // 両方のAPIを並列で呼び出し
         const [goalsRes, levelRes] = await Promise.all([
-          fetch(`/api/goals?date=${todayKey()}&includeYesterday=true`, {
+          fetch(`/api/goals?date=${today}&includeYesterday=true`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch("/api/user/level", {
@@ -117,6 +129,9 @@ export default function TodayPage() {
         if (goalsRes.ok) {
           const data = (await goalsRes.json()) as GoalWithYesterday[];
           setGoals(data);
+          // キャッシュを更新
+          cachedGoals = data;
+          cacheDate = today;
         } else {
           setError("習慣の取得に失敗しました。");
         }
@@ -124,6 +139,7 @@ export default function TodayPage() {
         if (levelRes.ok) {
           const data = (await levelRes.json()) as UserLevel;
           setUserLevel(data);
+          cachedUserLevel = data;
         }
       } catch (err) {
         console.error(err);
@@ -134,6 +150,7 @@ export default function TodayPage() {
     };
 
     void loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleHabitCheck = useCallback(
@@ -150,8 +167,8 @@ export default function TodayPage() {
 
       // 楽観的更新：即座にUIを更新（ストリークも更新）
       let previousState: GoalWithYesterday | null = null;
-      setGoals((prev) =>
-        prev.map((habit) => {
+      setGoals((prev) => {
+        const updated = prev.map((habit) => {
           if (habit.id === goalId) {
             previousState = habit;
             const currentStreak = habit.streak ?? 0;
@@ -163,8 +180,11 @@ export default function TodayPage() {
             };
           }
           return habit;
-        })
-      );
+        });
+        // キャッシュも更新
+        cachedGoals = updated;
+        return updated;
+      });
 
       // ポイント表示も即座に（楽観的）
       if (nextChecked) {
@@ -205,8 +225,8 @@ export default function TodayPage() {
           };
 
           // サーバーからの正確なデータで更新
-          setGoals((prev) =>
-            prev.map((habit) =>
+          setGoals((prev) => {
+            const updated = prev.map((habit) =>
               habit.id === goalId
                 ? {
                     ...habit,
@@ -216,12 +236,15 @@ export default function TodayPage() {
                     isHallOfFame: Boolean(data.hallOfFameAt ?? habit.hallOfFameAt),
                   }
                 : habit
-            )
-          );
+            );
+            cachedGoals = updated;
+            return updated;
+          });
 
           // レベル情報更新
           if (data.level) {
             setUserLevel(data.level);
+            cachedUserLevel = data.level;
           }
 
           // レベルアップ演出
@@ -240,11 +263,13 @@ export default function TodayPage() {
           console.error(err);
           // エラー時は元に戻す
           if (previousState) {
-            setGoals((prev) =>
-              prev.map((habit) =>
+            setGoals((prev) => {
+              const updated = prev.map((habit) =>
                 habit.id === goalId ? previousState! : habit
-              )
-            );
+              );
+              cachedGoals = updated;
+              return updated;
+            });
           }
           setError("チェックの更新に失敗しました。");
         } finally {
