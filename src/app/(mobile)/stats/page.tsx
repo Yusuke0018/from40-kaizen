@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { UserLevel } from "@/lib/level-system";
 import { cn } from "@/lib/utils";
@@ -22,50 +22,75 @@ import {
 } from "lucide-react";
 import type { StatsResponse } from "@/app/api/stats/route";
 
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+// モジュールレベルのキャッシュ
+let cachedStatsData: StatsResponse | null = null;
+let cachedStatsLevel: UserLevel | null = null;
+let statsCacheDate: string | null = null;
+
 export default function StatsPage() {
   const { user } = useAuthContext();
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [userLevel, setUserLevel] = useState<UserLevel | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const today = todayKey();
+  const hasValidCache = cachedStatsData !== null && statsCacheDate === today;
+
+  const [stats, setStats] = useState<StatsResponse | null>(hasValidCache ? cachedStatsData : null);
+  const [userLevel, setUserLevel] = useState<UserLevel | null>(hasValidCache ? cachedStatsLevel : null);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await user.getIdToken();
-
-      const [statsRes, levelRes] = await Promise.all([
-        fetch("/api/stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch("/api/user/level", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-
-      if (statsRes.ok) {
-        const statsData = (await statsRes.json()) as StatsResponse;
-        setStats(statsData);
-      }
-
-      if (levelRes.ok) {
-        const levelData = (await levelRes.json()) as UserLevel;
-        setUserLevel(levelData);
-      }
-    } catch (err) {
-      console.error(err);
-      setError("データの取得に失敗しました。");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
 
   useEffect(() => {
     if (!user) return;
+
+    // キャッシュが有効な場合はスキップ
+    if (hasValidCache) {
+      setLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await user.getIdToken();
+
+        const [statsRes, levelRes] = await Promise.all([
+          fetch("/api/stats", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("/api/user/level", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (statsRes.ok) {
+          const statsData = (await statsRes.json()) as StatsResponse;
+          setStats(statsData);
+          cachedStatsData = statsData;
+        }
+
+        if (levelRes.ok) {
+          const levelData = (await levelRes.json()) as UserLevel;
+          setUserLevel(levelData);
+          cachedStatsLevel = levelData;
+        }
+
+        statsCacheDate = today;
+      } catch (err) {
+        console.error(err);
+        setError("データの取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     void loadData();
-  }, [user, loadData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   return (
     <div className="space-y-5 pb-20">

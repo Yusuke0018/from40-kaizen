@@ -29,12 +29,19 @@ const CARD_COLORS = [
   },
 ];
 
+// モジュールレベルのキャッシュ
+let cachedSettingsGoals: Goal[] | null = null;
+let settingsCacheDate: string | null = null;
+
 export default function SettingsPage() {
   const { user, signOut } = useAuthContext();
   const [signingOut, setSigningOut] = useState(false);
 
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [loadingGoals, setLoadingGoals] = useState(false);
+  const today = isoToday();
+  const hasValidCache = cachedSettingsGoals !== null && settingsCacheDate === today;
+
+  const [goals, setGoals] = useState<Goal[]>(hasValidCache ? cachedSettingsGoals! : []);
+  const [loadingGoals, setLoadingGoals] = useState(!hasValidCache);
   const [goalError, setGoalError] = useState<string | null>(null);
 
   const [goalText, setGoalText] = useState("");
@@ -51,13 +58,20 @@ export default function SettingsPage() {
     [goals]
   );
 
-  const loadGoals = useCallback(async () => {
+  const loadGoals = useCallback(async (forceRefresh = false) => {
     if (!user) return;
+
+    // キャッシュが有効でforceRefreshでない場合はスキップ
+    if (!forceRefresh && cachedSettingsGoals !== null && settingsCacheDate === today) {
+      setLoadingGoals(false);
+      return;
+    }
+
     setLoadingGoals(true);
     setGoalError(null);
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/goals?date=${isoToday()}`, {
+      const res = await fetch(`/api/goals?date=${today}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -65,18 +79,22 @@ export default function SettingsPage() {
       }
       const data = (await res.json()) as Goal[];
       setGoals(data);
+      // キャッシュを更新
+      cachedSettingsGoals = data;
+      settingsCacheDate = today;
     } catch (error) {
       console.error(error);
       setGoalError("習慣の取得に失敗しました。");
     } finally {
       setLoadingGoals(false);
     }
-  }, [user]);
+  }, [user, today]);
 
   useEffect(() => {
     if (!user) return;
     void loadGoals();
-  }, [user, loadGoals]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   async function handleSaveHabit() {
     if (!user) return;
@@ -118,7 +136,7 @@ export default function SettingsPage() {
         throw new Error(data?.error ?? "Failed to save habit");
       }
       resetForm();
-      await loadGoals();
+      await loadGoals(true);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の保存に失敗しました。");
@@ -142,7 +160,7 @@ export default function SettingsPage() {
       if (editingGoalId === goalId) {
         resetForm();
       }
-      await loadGoals();
+      await loadGoals(true);
     } catch (error) {
       console.error(error);
       setGoalError("習慣の削除に失敗しました。");

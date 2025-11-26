@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import type { Goal, GoalStats, CheckRecord } from "@/types/goal";
 import { cn } from "@/lib/utils";
@@ -78,39 +78,57 @@ const CARD_COLORS = [
   },
 ];
 
+// モジュールレベルのキャッシュ
+let cachedHistoryGoals: GoalWithHistory[] | null = null;
+let historyCacheDate: string | null = null;
+
 export default function HistoryPage() {
   const { user } = useAuthContext();
-  const [goals, setGoals] = useState<GoalWithHistory[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const today = todayKey();
+  const hasValidCache = cachedHistoryGoals !== null && historyCacheDate === today;
+
+  const [goals, setGoals] = useState<GoalWithHistory[]>(hasValidCache ? cachedHistoryGoals! : []);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
   const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
 
-  const loadGoals = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(`/api/goals?date=${todayKey()}&history=true`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load goals");
-      }
-      const data = (await res.json()) as GoalWithHistory[];
-      setGoals(data);
-    } catch (err) {
-      console.error(err);
-      setError("履歴の取得に失敗しました。");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
     if (!user) return;
+
+    // キャッシュが有効な場合はスキップ
+    if (hasValidCache) {
+      setLoading(false);
+      return;
+    }
+
+    const loadGoals = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(`/api/goals?date=${today}&history=true`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load goals");
+        }
+        const data = (await res.json()) as GoalWithHistory[];
+        setGoals(data);
+        // キャッシュを更新
+        cachedHistoryGoals = data;
+        historyCacheDate = today;
+      } catch (err) {
+        console.error(err);
+        setError("履歴の取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     void loadGoals();
-  }, [user, loadGoals]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const toggleExpand = (goalId: string) => {
     setExpandedGoalId((prev) => (prev === goalId ? null : goalId));

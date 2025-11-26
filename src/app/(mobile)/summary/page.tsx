@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuthContext } from "@/components/providers/auth-provider";
 import { cn } from "@/lib/utils";
 import {
@@ -20,40 +20,63 @@ import type { StatsResponse } from "@/app/api/stats/route";
 
 type ViewMode = "weekly" | "monthly";
 
+function todayKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+// モジュールレベルのキャッシュ
+let cachedSummaryStats: StatsResponse | null = null;
+let summaryCacheDate: string | null = null;
+
 export default function SummaryPage() {
   const { user } = useAuthContext();
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  const today = todayKey();
+  const hasValidCache = cachedSummaryStats !== null && summaryCacheDate === today;
+
+  const [stats, setStats] = useState<StatsResponse | null>(hasValidCache ? cachedSummaryStats : null);
+  const [loading, setLoading] = useState(!hasValidCache);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("weekly");
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const loadStats = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/stats", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        throw new Error("Failed to load stats");
-      }
-      const data = (await res.json()) as StatsResponse;
-      setStats(data);
-    } catch (err) {
-      console.error(err);
-      setError("統計データの取得に失敗しました。");
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
   useEffect(() => {
     if (!user) return;
+
+    // キャッシュが有効な場合はスキップ
+    if (hasValidCache) {
+      setLoading(false);
+      return;
+    }
+
+    const loadStats = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch("/api/stats", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          throw new Error("Failed to load stats");
+        }
+        const data = (await res.json()) as StatsResponse;
+        setStats(data);
+        // キャッシュを更新
+        cachedSummaryStats = data;
+        summaryCacheDate = today;
+      } catch (err) {
+        console.error(err);
+        setError("統計データの取得に失敗しました。");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     void loadStats();
-  }, [user, loadStats]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const currentData = viewMode === "weekly" ? stats?.weekly : stats?.monthly;
   const maxIndex = currentData ? currentData.length - 1 : 0;
