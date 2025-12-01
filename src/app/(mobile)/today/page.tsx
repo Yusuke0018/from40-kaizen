@@ -87,7 +87,6 @@ export default function TodayPage() {
   const [goals, setGoals] = useState<GoalWithYesterday[]>(initialGoals ?? []);
   const [loading, setLoading] = useState(initialGoals === null);
   const [error, setError] = useState<string | null>(null);
-  const [showComment, setShowComment] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<"today" | "yesterday">("today");
   const [userLevel, setUserLevel] = useState<UserLevel | null>(initialLevel);
   const [levelUp, setLevelUp] = useState<LevelUpInfo | null>(null);
@@ -211,7 +210,6 @@ export default function TodayPage() {
           const data = (await res.json()) as {
             streak?: number;
             hallOfFameAt?: string | null;
-            comment?: string;
             pointsEarned?: number;
             pointsLost?: number;
             levelUp?: LevelUpInfo | null;
@@ -245,9 +243,6 @@ export default function TodayPage() {
           // レベルアップ演出
           if (data.levelUp) {
             setLevelUp(data.levelUp);
-          } else if (nextChecked && data.comment) {
-            setShowComment(data.comment);
-            setTimeout(() => setShowComment(null), 4000);
           }
 
           // チェックOFF時の処理
@@ -409,40 +404,6 @@ export default function TodayPage() {
 
                 {/* Close hint */}
                 <p className="mt-6 text-xs text-slate-400">
-                  タップして閉じる
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Comment Popup Modal */}
-      {showComment && !levelUp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div
-            className="absolute inset-0 bg-slate-900/30 backdrop-blur-sm animate-fade-in"
-            onClick={() => setShowComment(null)}
-          />
-          <div className="relative animate-popup-in">
-            <div className="glass-card relative overflow-hidden rounded-3xl p-6 shadow-2xl shadow-teal-500/20">
-              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-teal-400/30 to-emerald-400/30 blur-2xl" />
-              <div className="absolute -bottom-6 -left-6 h-20 w-20 rounded-full bg-gradient-to-br from-cyan-400/25 to-teal-400/25 blur-xl" />
-
-              <div className="relative flex flex-col items-center text-center">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 shadow-lg shadow-teal-500/30 animate-bounce-in">
-                  <Sparkles className="h-8 w-8 text-white" />
-                </div>
-
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-teal-600">
-                  Great Job!
-                </p>
-
-                <p className="text-base font-bold text-slate-700 leading-relaxed">
-                  {showComment}
-                </p>
-
-                <p className="mt-4 text-xs text-slate-400">
                   タップして閉じる
                 </p>
               </div>

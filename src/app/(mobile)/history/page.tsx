@@ -15,7 +15,6 @@ import {
   Trophy,
   ChevronDown,
   ChevronUp,
-  Sparkles,
   BarChart3,
   Zap,
   Star,
@@ -385,17 +384,6 @@ function GoalHistoryCard({
             </div>
           )}
 
-          {/* Motivation Message */}
-          {goal.comment && (
-            <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-gradient-to-r from-teal-50/80 to-emerald-50/80 p-3">
-              <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal-400 to-emerald-500">
-                <Sparkles className="h-3.5 w-3.5 text-white" />
-              </div>
-              <p className="text-xs font-medium text-slate-700">
-                {goal.comment}
-              </p>
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -5,7 +5,6 @@ import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import type { GoalInput } from "@/lib/schemas/goal";
 import { todayKey, yesterdayKey } from "@/lib/date";
-import { getComment } from "@/lib/comments";
 import type { GoalStats, CheckRecord } from "@/types/goal";
 
 const MAX_ACTIVE_HABITS = 3;
@@ -42,16 +41,6 @@ export async function GET(request: Request) {
         );
 
         const isHallOfFame = Boolean(data.hallOfFameAt);
-        const isRestart = result.stats.restartCount > 0 && result.stats.currentStreak < 3;
-
-        // コメント生成
-        const comment = getComment({
-          streak: result.stats.progressToHallOfFame,
-          isRestart,
-          isMilestone: [7, 14, 21, 30, 45, 50, 60, 70, 80].includes(result.stats.progressToHallOfFame),
-          isHallOfFame,
-          isWarning: result.daysSinceLastCheck === 2,
-        });
 
         // 昨日チェック済みかどうか判定
         const checkedYesterday = includeYesterday && result.checks
@@ -67,8 +56,6 @@ export async function GET(request: Request) {
           hallOfFameAt: data.hallOfFameAt ?? null,
           isHallOfFame,
           stats: result.stats,
-          comment,
-          isRestart,
           daysSinceLastCheck: result.daysSinceLastCheck,
           ...(includeYesterday ? { checkedYesterday } : {}),
           ...(includeHistory ? { checks: result.checks } : {}),

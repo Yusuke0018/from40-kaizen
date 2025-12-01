@@ -35,8 +35,6 @@ export type Goal = {
   isHallOfFame?: boolean;
   stats?: GoalStats;
   checks?: CheckRecord[]; // 履歴画面用
-  comment?: string; // 励ましコメント
-  isRestart?: boolean; // 再開かどうか
   daysSinceLastCheck?: number; // 最後のチェックからの日数
 };
 

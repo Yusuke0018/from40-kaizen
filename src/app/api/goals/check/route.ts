@@ -4,7 +4,6 @@ import { FieldValue } from "firebase-admin/firestore";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { verifyRequestUser } from "@/lib/auth/server-token";
 import { todayKey } from "@/lib/date";
-import { getComment } from "@/lib/comments";
 import type { CheckRecord } from "@/types/goal";
 import {
   calculateCheckPoints,
@@ -97,16 +96,6 @@ export async function POST(request: Request) {
     const streak = progressToHallOfFame;
     const isRestart = restartCount > 0 && progressToHallOfFame < 3;
 
-    // コメント生成
-    const comment = getComment({
-      streak: progressToHallOfFame,
-      isRestart,
-      isMilestone: [7, 14, 21, 30, 45, 50, 60, 70, 80, 90].includes(
-        progressToHallOfFame
-      ),
-      isHallOfFame: progressToHallOfFame >= HALL_OF_FAME_DAYS,
-    });
-
     // 殿堂入り判定
     let hallOfFameAt = existingHall ?? null;
     let hallOfFameWritePromise: Promise<unknown> | null = null;
@@ -188,8 +177,6 @@ export async function POST(request: Request) {
       ok: true,
       streak,
       hallOfFameAt,
-      isRestart,
-      comment,
       pointsEarned,
       pointsLost,
       levelUp,
